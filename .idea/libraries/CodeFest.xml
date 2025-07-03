@@ -1,7 +1,7 @@
 <component name="libraryTable">
-  <library name="CodeFestv2.5">
+  <library name="CodeFest">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../../CodeFestv2.5.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../CodeFest.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
