@@ -2,7 +2,10 @@ import io.socket.emitter.Emitter;
 import jsclub.codefest.sdk.Hero;
 import jsclub.codefest.sdk.algorithm.PathUtils;
 import jsclub.codefest.sdk.base.Node;
+import jsclub.codefest.sdk.model.Element;
 import jsclub.codefest.sdk.model.GameMap;
+import jsclub.codefest.sdk.model.npcs.Enemy;
+import jsclub.codefest.sdk.model.obstacles.Obstacle;
 import jsclub.codefest.sdk.model.players.Player;
 import jsclub.codefest.sdk.model.weapon.Weapon;
 
@@ -26,7 +29,13 @@ public class MapUpdateListener implements Emitter.Listener {
             gameMap.updateOnUpdateMap(args[0]);
 
             Player player = gameMap.getCurrentPlayer();
-            List<Player> enemies = gameMap.getOtherPlayerInfo();
+
+            List<Obstacle> chestList = gameMap.getObstaclesByTag("DESTRUCTIBLE");
+
+            for (Obstacle chest : chestList) {
+                System.out.println("Chest at (" + chest.getX() + ", " + chest.getY() + "), HP: " + chest.getCurrentHp());
+            }
+
 
             if (player == null || player.getHealth() == 0) return;
 
@@ -38,11 +47,14 @@ public class MapUpdateListener implements Emitter.Listener {
             List<Node> avoid = getNodesToAvoid(gameMap);
             List<Node> avoid2 = getNodesToAvoid2(gameMap);
 
+
             if (myGun == null) {
                 handleSearchForGun(gameMap, player, avoid);
+                return;
             }
             if (hasUsableWeapon()) {
                 handleAttackEnemy(gameMap, player, avoid2);
+
             }
 
 
@@ -52,12 +64,12 @@ public class MapUpdateListener implements Emitter.Listener {
         }
     }
 
+    //kiếm tra điều kiện có vũ khí và vũ khí còn số lần sử dụng
     private boolean hasUsableWeapon() {
-        return (hero.getInventory().getGun() != null && hero.getInventory().getGun().getUseCount() > 0)
-                || (hero.getInventory().getMelee() != null && hero.getInventory().getMelee().getUseCount() > 0)
-                || (hero.getInventory().getThrowable() != null && hero.getInventory().getThrowable().getUseCount() > 0);
+        return (hero.getInventory().getGun() != null && hero.getInventory().getGun().getUseCount() > 0) || (hero.getInventory().getMelee() != null && hero.getInventory().getMelee().getUseCount() > 0) || (hero.getInventory().getThrowable() != null && hero.getInventory().getThrowable().getUseCount() > 0);
     }
 
+    //lấy danh sách các vật cản phải tránh khi đi tìm súng, bao gồm: vật cản không thể đi qua, rương, người chơi khác, quái
     private List<Node> getNodesToAvoid(GameMap gameMap) {
         List<Node> nodes = new ArrayList<>(gameMap.getListIndestructibles());
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_GO_THROUGH"));
@@ -67,6 +79,7 @@ public class MapUpdateListener implements Emitter.Listener {
         return nodes;
     }
 
+    //lấy danh sách các vật cản phải tránh khi đi tìm người chơi khác, bao gồm: vật cản không thể đi qua, rương, quái
     private List<Node> getNodesToAvoid2(GameMap gameMap) {
         List<Node> nodes = new ArrayList<>(gameMap.getListIndestructibles());
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_GO_THROUGH"));
@@ -75,6 +88,7 @@ public class MapUpdateListener implements Emitter.Listener {
         return nodes;
     }
 
+    //hàm tìm vũ khí gần nhất so với vị trí hiện tại
     private Weapon getNearestWeapon(GameMap gameMap, Player player) {
         List<Weapon> weapons = gameMap.getListWeapons();
         Weapon nearestWeapon = null;
@@ -90,6 +104,8 @@ public class MapUpdateListener implements Emitter.Listener {
         return nearestWeapon;
     }
 
+    //hàm đi tìm vũ khí bằng cách tìm vũ khí gần nhất so với vị trí hiện tại,
+    //tìm đường đi gần nhất đến vũ khí đó và gọi hàm move để đi tìm
     private void handleSearchForGun(GameMap gameMap, Player player, List<Node> avoid) throws IOException {
         Weapon nearestWeapon = getNearestWeapon(gameMap, player);
         if (nearestWeapon == null) return;
@@ -103,6 +119,7 @@ public class MapUpdateListener implements Emitter.Listener {
         }
     }
 
+    //  tìm người chơi khác gần nhất so với vị trí hiện tại
     private Player getNearestPlayer(GameMap gameMap, Player player) {
         List<Player> enemies = gameMap.getOtherPlayerInfo();
         Player nearestEnemy = null;
@@ -118,23 +135,40 @@ public class MapUpdateListener implements Emitter.Listener {
         return nearestEnemy;
     }
 
+    // hàm tìm tọa độ của người chơi khác và trả về hướng đi của người chơi khác
     private String getDirection(Node from, Node to) {
-        int dx = to.getX() - from.getX();
-        int dy = to.getY() - from.getY();
-        if (dx == 1) return "r";
-        if (dx == -1) return "l";
-        if (dy == 1) return "u";
-        if (dy == -1) return "d";
-        return "";
+        if (from.getX() == to.getX()) {
+            // cùng cột → bắn lên hoặc xuống
+            return (to.getY() > from.getY()) ? "u" : "d";
+        }
+        if (from.getY() == to.getY()) {
+            // cùng hàng → bắn phải hoặc trái
+            return (to.getX() > from.getX()) ? "r" : "l";
+        }
+        return ""; // không cùng hàng hoặc cột → không bắn được
     }
 
+
+    //  hàm tìm phạm vi sử dụng vũ khí
+    private int findRangeWeapon(Weapon weapon) {
+        int range = 1;
+        int[] rangeWeapon = weapon.getRange();
+        for (int i = 0; i < rangeWeapon.length; i++) {
+            range *= rangeWeapon[i];
+        }
+        return range;
+    }
+
+    //    hàm tấn công người chơi khác
     private void handleAttackEnemy(GameMap gameMap, Player player, List<Node> avoid) throws IOException {
         Player nearestEnemy = getNearestPlayer(gameMap, player);
         if (nearestEnemy != null) {
             Node enemyPos = new Node(nearestEnemy.getX(), nearestEnemy.getY());
             Node myPos = new Node(player.getX(), player.getY());
             int dist = PathUtils.distance(myPos, enemyPos);
-            if (dist == 1) {
+            int range = findRangeWeapon(hero.getInventory().getGun());
+            System.out.println(range);
+            if (dist <= range) {
                 String dir = getDirection(myPos, enemyPos);
                 if (hero.getInventory().getGun() != null) {
                     hero.shoot(dir);
