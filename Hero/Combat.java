@@ -83,15 +83,46 @@ public class Combat{
 
     
 
-    public static String selectWeaponAction(Inventory inventory) {
+    public static String selectWeaponAction(Inventory inventory, Player enemy) {
     	
     	double gunD = 0, meleeD = 0, throwableD = 0;
+
     	
-    	
+        if (inventory.getGun() != null) gunD = inventory.getGun().getDamage();
+        if (inventory.getThrowable() != null) throwableD = inventory.getThrowable().getDamage();
+        if (inventory.getMelee() != null) meleeD = inventory.getMelee().getDamage();
+
+        if (inventory.getThrowable() != null && throwableD >= enemy.getHealth()) 
+        {
+        	return "throw";
+        }
+        
+        if (inventory.getMelee() != null && meleeD >= enemy.getHealth()) 
+        {
+            return "attack";
+        }
+        
         if (inventory.getGun() != null) {
-            return "shoot";
+        	return "shoot";
+        }
+        
+        if (inventory.getThrowable() != null) {
+            return "throw";
         }
 
+        if (inventory.getSpecial() != null) {
+            return "special";
+        }
+
+        return "attack";
+    }
+
+    public static String selectWeaponAction(Inventory inventory) {
+
+        if (inventory.getGun() != null) {
+        	return "shoot";
+        }
+        
         if (inventory.getThrowable() != null) {
             return "throw";
         }
@@ -102,7 +133,7 @@ public class Combat{
         
         return "attack";
     }
-
+    
 //    public static boolean shouldRetreat(Player currentPlayer, GameMap gameMap) {
 //
 //        if (currentPlayer.getHealth() <= Config.HP_RETREAT_THRESHOLD) {

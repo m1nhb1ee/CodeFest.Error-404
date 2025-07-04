@@ -16,7 +16,7 @@ import java.util.List;
 
 public class Main {
     private static final String SERVER_URL = "https://cf25-server.jsclub.dev";
-    private static final String GAME_ID = "154076";
+    private static final String GAME_ID = "181626";
     private static final String PLAYER_NAME = "b1e";
     private static final String SECRET_KEY = "sk-TN9xLbiuTbyZXILhvyWJbw:skQHC0vsqGEWmjjNlB_mLLiRl1z-BUJf_OjRgcRWtGoWpxTBp9hvQ-0qqmD3BZCppSfa8wHyysKVkG5j06qwzQ";
 
@@ -284,6 +284,60 @@ class MapUpdateListener implements Emitter.Listener {
                 if (distance <= 1) {
                     hero.attack(direction);
                     
+                    System.out.println("State "+state+" Attacking " + direction);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    private boolean tryAttack(Player player, Player target, Inventory inventory, double distance, GameMap gameMap) throws IOException {
+        String direction = Navigator.getDirection(player, target);
+        String action = Combat.selectWeaponAction(inventory, target);
+        double hp = target.getHealth();
+        
+        switch (action) {
+            case "shoot" -> {
+            	int[] attackRange =  inventory.getGun().getRange();
+            	System.out.print("Atk Range " + attackRange[0] + " " + attackRange[1] + " ");
+                if (inventory.getGun() != null &&  Navigator.checkObstacles(player, target, gameMap, inventory)){
+                    hero.shoot(direction);
+                    System.out.println("Shooting " + direction);
+                    if (hp == target.getHealth()) action = "attack";
+                    else return true;
+                }
+                System.out.print("cant attack " + direction);
+            }
+            case "throw" -> {
+            	
+            	int[] attackRange =  inventory.getThrowable().getRange();
+            	System.out.print("Atk Range " + attackRange[0] + " " + attackRange[1] + " ");
+                if (inventory.getThrowable() != null) {
+                	
+                	distance = PathUtils.distance(player, target);
+                	
+                    hero.throwItem(direction);
+                    hero.move(Navigator.getDodgeDirection(player, target, gameMap));
+                    System.out.println("Throwing " + direction);
+                    return true;
+                }
+            }
+            case "special" -> {
+
+            	int[] attackRange =  inventory.getSpecial().getRange();
+            	System.out.print("Atk Range " + attackRange[0] + " " + attackRange[1] + " ");
+                if (inventory.getSpecial() != null) {
+                    hero.useSpecial(direction);
+                    if (distance <= 1) hero.attack(direction);
+                    hero.move(Navigator.getDodgeDirection(player, target, gameMap));
+                    System.out.println("Using special " + direction);
+                    return true;
+                }
+            }
+            case "attack" -> {
+                if (distance <= 1) {
+                    hero.attack(direction);
                     System.out.println("State "+state+" Attacking " + direction);
                     return true;
                 }
