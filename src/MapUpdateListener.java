@@ -59,30 +59,7 @@ public class MapUpdateListener implements Emitter.Listener {
                 Node myPos = new Node(player.getX(), player.getY());
                 int distChest = PathUtils.distance(myPos, nearestChestNode);
                 int distEnemy = PathUtils.distance(myPos, nearestEnemyNode);
-                if (distChest < distEnemy) {
-                    int range = findRangeWeapon(hero.getInventory().getGun());
-                    int range2 = findRangeWeapon(hero.getInventory().getMelee());
-                    int range3 = findRangeWeapon(hero.getInventory().getThrowable());
-                    System.out.println(range);
-                    System.out.println(range2);
-                    System.out.println(range3);
-                    if (distChest <= range) {
-                        String dir = getDirection(myPos, nearestChestNode);
-                        if (dir != null) {
-                            if (hero.getInventory().getGun() != null) {
-                                hero.shoot(dir);
-                            } else if (hero.getInventory().getMelee() != null) {
-                                hero.attack(dir);
-                            }
-                        }
-                    } else {
-                        String path = PathUtils.getShortestPath(gameMap, avoid, myPos, nearestChestNode, true);
-                        if (!path.isEmpty()) {
-                            hero.move(path);
-                        }
-                    }
-
-                } else {
+                if (distChest > distEnemy) {
                     handleAttackEnemy(gameMap, player, avoid2);
                 }
 
@@ -96,6 +73,7 @@ public class MapUpdateListener implements Emitter.Listener {
     }
 
     //kiếm tra điều kiện có vũ khí và vũ khí còn số lần sử dụng
+    //ko can vi het dan vu khi tu dong mat
     private boolean hasUsableWeapon() {
         return (hero.getInventory().getGun() != null && hero.getInventory().getGun().getUseCount() > 0) || (hero.getInventory().getMelee() != null && hero.getInventory().getMelee().getUseCount() > 0) || (hero.getInventory().getThrowable() != null && hero.getInventory().getThrowable().getUseCount() > 0);
     }
@@ -217,14 +195,20 @@ public class MapUpdateListener implements Emitter.Listener {
             Node myPos = new Node(player.getX(), player.getY());
             int dist = PathUtils.distance(myPos, enemyPos);
             int range = findRangeWeapon(hero.getInventory().getGun());
+            int range2 = findRangeWeapon(hero.getInventory().getMelee());
+            int range3 = findRangeWeapon(hero.getInventory().getThrowable());
             System.out.println(range);
-            if (dist <= range) {
+            System.out.println(range2);
+            System.out.println(range3);
+            if (dist <= range || dist <= range2 || dist <= range3) {
                 String dir = getDirection(myPos, enemyPos);
                 if (dir != null) {
                     if (hero.getInventory().getGun() != null) {
                         hero.shoot(dir);
                     } else if (hero.getInventory().getMelee() != null) {
                         hero.attack(dir);
+                    } else if (hero.getInventory().getThrowable() != null) {
+                        hero.throwItem(dir);
                     }
                 }
 

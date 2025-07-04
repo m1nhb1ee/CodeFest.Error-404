@@ -7,7 +7,7 @@ import java.io.IOException;
 
 public class Main {
     private static final String SERVER_URL = "https://cf25-server.jsclub.dev";
-    private static final String GAME_ID = "137053";
+    private static final String GAME_ID = "134675";
     private static final String PLAYER_NAME = "ERROR404";
     private static final String SECRET_KEY = "sk-jRQqh61dSy-pq4q8Kaz_WA:kCfJPiZVKJOydwSswgC-XOuGdRYVKh6xdjqzkqjAWOLeYMiV9tMpm5gnLDkhcRbIiHhjaYzmqTHa-6BkDo5uUw";
 
