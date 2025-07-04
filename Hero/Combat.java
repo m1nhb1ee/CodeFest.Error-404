@@ -85,6 +85,8 @@ public class Combat{
 
     public static String selectWeaponAction(Inventory inventory) {
     	
+    	double gunD = 0, meleeD = 0, throwableD = 0;
+    	
     	
         if (inventory.getGun() != null) {
             return "shoot";

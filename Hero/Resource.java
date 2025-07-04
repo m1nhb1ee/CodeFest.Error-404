@@ -132,7 +132,7 @@ public class Resource {
         for (Weapon special : gameMap.getAllSpecial()) {
             double distance = PathUtils.distance(currentPlayer, special);
             double dps = special.getDamage() / special.getCooldown();
-            if (PathUtils.checkInsideSafeArea(special, gameMap.getSafeZone(), gameMap.getMapSize()))
+            if (PathUtils.checkInsideSafeArea(special, gameMap.getSafeZone(), gameMap.getMapSize()) && !"SAHUR_BAT".equals(special.getId()) )
             	candidates.add(new BestWeaponItem(special, Config.SPECIAL_WEAPON_PRIORITY, distance, dps));
         }
 
@@ -143,7 +143,7 @@ public class Resource {
             	candidates.add(new BestWeaponItem(throwable, Config.THROWABLE_PRIORITY, distance, dps));
         }
         
-        if (inventory.getMelee().getId() == "HAND") {
+		if (inventory.getMelee().getId() == "HAND" && "HAND".equals(inventory.getMelee().getId()) && inventory.getMelee().getDamage() <=5 ) {
 	        for (Weapon melee : gameMap.getAllMelee()) {
 	            double distance = PathUtils.distance(currentPlayer, melee);
 	            double dps = melee.getDamage() / melee.getCooldown();
@@ -180,12 +180,12 @@ public class Resource {
 	                            System.out.println("Picked up helmet at current position");
 	                            return true;
 	                        } else {
-	                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, helmet, false);
-	                        	System.out.println("Path to special: " + path);
+	                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, helmet, true);
+	                        	System.out.println("Path to helmet: " + path);
 	                            
 	                            if (path != null && !path.isEmpty()) {
 	                                hero.move(path);
-	                                System.out.println("Moving to special with path: " + path);
+	                                System.out.println("Moving to helmet with path: " + path);
 	                            }
 	                            
 	                            distance = PathUtils.distance(currentPlayer, helmet);
@@ -211,12 +211,12 @@ public class Resource {
 	                            System.out.println("Picked up armor at current position");
 	                            return true;
 	                        } else {
-	                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, armor, false);
-	                        	System.out.println("Path to special: " + path); // ← THÊM LOG NÀY
+	                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, armor, true);
+	                        	System.out.println("Path to armor: " + path);	
 	                            
 	                            if (path != null && !path.isEmpty()) {
 	                                hero.move(path);
-	                                System.out.println("Moving to special with path: " + path);
+	                                System.out.println("Moving to armor with path: " + path);
 	                            }
 	                            
 	                            distance = PathUtils.distance(currentPlayer, armor);
@@ -233,15 +233,15 @@ public class Resource {
             if (inventory.getSpecial() == null) {
                 for (Weapon special : gameMap.getAllSpecial()) {
                     double distance = PathUtils.distance(currentPlayer, special);
-                    if (distance <= 5.0) {
+                    if (distance <= 5.0 && !"SAHUR_BAT".equals(special.getId())) {
                     	System.out.println("detect special");
                         if (distance == 0) {
                             hero.pickupItem();
                             System.out.println("Picked up special weapon at current position");
                             return true;
                         } else {
-                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, special, false);
-                            System.out.println("Path to special: " + path); // ← THÊM LOG NÀY
+                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, special, true);
+                            System.out.println("Path to special: " + path);
                             
                             if (path != null && !path.isEmpty()) {
                                 hero.move(path);
@@ -271,12 +271,12 @@ public class Resource {
                             System.out.println("Picked up throwable at current position");
                             return true;
                         } else {
-                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, throwable, false);
-                        	System.out.println("Path to special: " + path); // ← THÊM LOG NÀY
+                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, throwable, true);
+                        	System.out.println("Path to throwable: " + path);
                             
                             if (path != null && !path.isEmpty()) {
                                 hero.move(path);
-                                System.out.println("Moving to special with path: " + path);
+                                System.out.println("Moving to throwable with path: " + path);
                             }
                             
                             distance = PathUtils.distance(currentPlayer, throwable);
@@ -300,15 +300,18 @@ public class Resource {
                             System.out.println("Picked up healing item at current position");
                             return true;
                         } else {
-                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, healing, false);
-                        	System.out.println("Path to special: " + path); // ← THÊM LOG NÀY
+                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, healing, true);
+                        	System.out.println("Path to healing: " + path);
                             
                             if (path != null && !path.isEmpty()) {
                                 hero.move(path);
-                                System.out.println("Moving to special with path: " + path);
-                            }
+                                System.out.println("Moving to healing with path: " + path);
+                            } 
                             
                             distance = PathUtils.distance(currentPlayer, healing);
+                            
+                            if (path == null && distance > 0) return false;
+                            
                             if (distance == 0) {
 	                            hero.pickupItem();
 	                            System.out.println("Moved " + path + " and picked up healing item");
@@ -329,12 +332,12 @@ public class Resource {
                             System.out.println("Picked up gun at current position");
                             return true;
                         } else {
-                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, gun, false);
-                        	System.out.println("Path to special: " + path); // ← THÊM LOG NÀY
+                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, gun, true);
+                        	System.out.println("Path to gun: " + path);
                             
                             if (path != null && !path.isEmpty()) {
                                 hero.move(path);
-                                System.out.println("Moving to special with path: " + path);
+                                System.out.println("Moving to gun with path: " + path);
                             }
                             
                             distance = PathUtils.distance(currentPlayer, gun);
@@ -348,28 +351,37 @@ public class Resource {
                 }
             }
             
-            if (inventory.getMelee().getId() == "HAND") {
+            if ("HAND".equals(inventory.getMelee().getId()) && inventory.getMelee().getId() == "HAND" && inventory.getMelee().getDamage() <= 5)  {
                 for (Weapon melee : gameMap.getAllMelee()) {
                     double distance = PathUtils.distance(currentPlayer, melee);
-                    if (distance <= 5) {
-                    	System.out.println("detect melee");
+                    if (distance <= 5 && "HAND".equals(inventory.getMelee().getId())) {
+                    	System.out.println("detect melee " + inventory.getMelee().getDamage() + " " + melee.getDamage());
                         if (distance == 0) {
+
+                        	hero.revokeItem(inventory.getMelee().getId());
+                        		
+                        	System.out.println("Melee revoked " + inventory.getMelee().getId());
+
                             hero.pickupItem();
-                            System.out.println("Picked up gun at current position");
+                            System.out.println("Picked up melee at current position");
                             return true;
                         } else {
-                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, melee, false);
-                        	System.out.println("Path to special: " + path);
+                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, melee, true);
+                        	System.out.println("Path to melee: " + path);
                             
                             if (path != null && !path.isEmpty()) {
                                 hero.move(path);
-                                System.out.println("Moving to special with path: " + path);
+                                System.out.println("Moving to melee with path: " + path);
                             }
                             
                             distance = PathUtils.distance(currentPlayer, melee);
                             if (distance == 0) {
+
+                            	hero.revokeItem(inventory.getMelee().getId());
+                            	System.out.print("Melee revoked");
+
 	                            hero.pickupItem();
-	                            System.out.println("Moved " + path + " and picked up gun");
+	                            System.out.println("Moved " + path + " and picked up melee");
                             }
                             return true;
                         }

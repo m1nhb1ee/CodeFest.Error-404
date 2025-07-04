@@ -16,7 +16,7 @@ import java.util.List;
 
 public class Main {
     private static final String SERVER_URL = "https://cf25-server.jsclub.dev";
-    private static final String GAME_ID = "118815";
+    private static final String GAME_ID = "154076";
     private static final String PLAYER_NAME = "b1e";
     private static final String SECRET_KEY = "sk-TN9xLbiuTbyZXILhvyWJbw:skQHC0vsqGEWmjjNlB_mLLiRl1z-BUJf_OjRgcRWtGoWpxTBp9hvQ-0qqmD3BZCppSfa8wHyysKVkG5j06qwzQ";
 
@@ -117,7 +117,7 @@ class MapUpdateListener implements Emitter.Listener {
             state = "COMBAT";
             return;
         }
-
+        
         if (weapon == null) System.out.print("no weapon found");
         else if (moveToTarget(gameMap, player, weapon, "weapon")) return;
 
@@ -157,7 +157,7 @@ class MapUpdateListener implements Emitter.Listener {
 	            return;
         }
 
-        String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, enemy.target, false);
+        String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, enemy.target, true);
         if (path != null && !path.isEmpty()) {
             hero.move(path);
             System.out.println("Moving to enemy: " + path);
@@ -228,7 +228,7 @@ class MapUpdateListener implements Emitter.Listener {
         }
 
         // move to
-        String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, chest, false);
+        String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, chest, true);
         if (path != null && distance > 1) {
             hero.move(path);
             System.out.println("Moving to chest: " + path);
@@ -293,7 +293,7 @@ class MapUpdateListener implements Emitter.Listener {
     }
     
     private boolean moveToTarget(GameMap gameMap, Player player, Node target, String targetType) throws IOException {
-        String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, target, false);
+        String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, target, true);
         if (path == null) return false;
 
         if (path.isEmpty()) {
