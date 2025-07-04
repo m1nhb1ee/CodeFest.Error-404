@@ -4,7 +4,7 @@ public class Config{
 
     public static final double HP_DANGER_THRESHOLD = 30.0; 
     public static final double HP_RETREAT_THRESHOLD = 20.0; 
-    public static final double HP_MEDIUM_THRESHOLD = 50.0; 
+    public static final double HP_MEDIUM_THRESHOLD = 50; 
     public static final int SAFE_DISTANCE_FROM_ENEMIES = 3;
     public static final int MAX_CHASE_DISTANCE = 100;
     
@@ -20,9 +20,12 @@ public class Config{
     
     // === ITEM PRIORITIES ===
     public static final int GUN_PRIORITY = 100;
-    public static final int HEALING_PRIORITY = 50;
-    public static final int SPECIAL_WEAPON_PRIORITY = 90;
-    public static final int THROWABLE_PRIORITY = 70;
+    public static final int HEALING_PRIORITY = 100;
+    public static final int SPECIAL_WEAPON_PRIORITY = 70;
+    public static final int THROWABLE_PRIORITY = 90;
+    public static final int MELEE_PRIORITY = 50;
+    public static final int DRAGON_EGG_PRIORITY = 100;
+    public static final int CHEST_PRIORITY = 70;
     
     // === COMBAT SETTINGS ===
     public static final int MIN_STREAK_FOR_CAUTION = 3; 

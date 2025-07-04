@@ -84,6 +84,8 @@ public class Combat{
     
 
     public static String selectWeaponAction(Inventory inventory) {
+    	
+    	
         if (inventory.getGun() != null) {
             return "shoot";
         }
@@ -114,13 +116,55 @@ public class Combat{
 //    }
     
     
-    
+    public static boolean inAttackRange(Node attacker, Node target, Inventory inventory) {
+    	
+    	int width,length;
+
+        int dx = target.getX() - attacker.getX();
+        int dy = target.getY() - attacker.getY();
+
+        String direction = Navigator.getDirection(attacker, target);
+        
+        if (inventory.getGun() != null) {
+        	int[] attackRange =  inventory.getGun().getRange();
+            width = attackRange[0];
+            length = attackRange[1];
+        }
+
+        else if (inventory.getThrowable() != null) {
+        	int[] attackRange =  inventory.getThrowable().getRange();
+            width = attackRange[0];
+            length = attackRange[1];
+        }
+
+        else if (inventory.getSpecial() != null) {
+        	int[] attackRange =  inventory.getSpecial().getRange();
+            width = attackRange[0];
+            length = attackRange[1];
+        }
+        
+        else {
+        	int[] attackRange =  inventory.getMelee().getRange();
+            width = attackRange[0];
+            length = attackRange[1];
+        }
+        
+        return switch (direction) {
+            case "u" -> dy > 0 && dy <= length && Math.abs(dx) <= width / 2;
+            case "d" -> dy < 0 && -dy <= length && Math.abs(dx) <= width / 2;
+            case "l" -> dx < 0 && -dx <= length && Math.abs(dy) <= width / 2;
+            case "r" -> dx > 0 && dx <= length && Math.abs(dy) <= width / 2;
+            default -> false;
+        };
+    }
+
     
     public static boolean hasWeapon(Inventory inventory) {
         return inventory.getGun() != null || inventory.getSpecial() != null || inventory.getThrowable() != null;
     }
 
     public static boolean needsBetterWeapon(Inventory inventory) {
+    	
         return inventory.getGun() == null && inventory.getSpecial() == null && inventory.getThrowable() == null;
     }
 }

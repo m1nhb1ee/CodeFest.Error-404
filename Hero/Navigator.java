@@ -6,16 +6,17 @@ import java.util.Random;
 
 import jsclub.codefest.sdk.base.Node;
 import jsclub.codefest.sdk.model.GameMap;
+import jsclub.codefest.sdk.model.Inventory;
 import jsclub.codefest.sdk.model.players.Player;
 
 public class Navigator {
-    public static boolean checkDirection(Player myHero, Node currentPlayer, GameMap gameMap) {
+    public static boolean checkObstacles(Player myHero, Node currentPlayer, GameMap gameMap, Inventory inventory) {
     	
     	List<Node> nodes = new ArrayList<>(gameMap.getListObstacles());
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_GO_THROUGH"));
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_SHOOT_THROUGH"));
         
-    	if (myHero.getX() == currentPlayer.getX() || myHero.getY() == currentPlayer.getY()) {
+    	if (Combat.inAttackRange(myHero, currentPlayer, inventory)) {
     		for (Node node : nodes) {
             	if (node.getX() == myHero.getX() && (
             		(node.getY() < currentPlayer.getY() && node.getY() > myHero.getY()) ||
@@ -31,7 +32,7 @@ public class Navigator {
     	else return false;
     }
     
-    public static String getDirection(Player from, Node to) {
+    public static String getDirection(Node from, Node to) {
         int dx = to.getX() - from.getX();
         int dy = to.getY() - from.getY();
         return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "r" : "l") : (dy > 0 ? "u" : "d");
