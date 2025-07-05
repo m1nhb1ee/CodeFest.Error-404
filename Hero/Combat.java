@@ -10,6 +10,8 @@ import java.util.*;
 
 public class Combat{
     
+	public static double gunCD, throwCD, meleeCD, shootCount;
+	
     public static class CombatTarget {
         public final Player target;
         public final double distance;
@@ -17,7 +19,7 @@ public class Combat{
 //        public final double opportunity;
 
         
-        public CombatTarget(Player target, double distance /*double threat, double opportunity*/) {
+        public CombatTarget(Player target, double distance /*double threat, double opportunity */) {
             this.target = target;
             this.distance = distance;
 //            this.threat = threat;
@@ -66,10 +68,10 @@ public class Combat{
 
 //    private static double calculateOpportunity(Player enemy, double distance, Player currentPlayer) {
 //    	
-//        double healthRatio = (100.0 - enemy.getHealth()) / 100.0;           
+//        double healthRatio = enemy.getHealth() / 100.0;           
 //        double myHealthRatio = currentPlayer.getHealth() / 100.0;    
 //        
-//        if (myHealthRatio >= (1-healthRatio)) return 2;
+//        if (myHealthRatio >= healthRatio) return 2;
 //        
 //        double distanceFactor = 1.0 / distance ;     
 //        double lowHpBonus;
@@ -78,15 +80,15 @@ public class Combat{
 //        else if (enemy.getHealth() <= Config.MED_HP_TARGET) lowHpBonus = 0.1;
 //        else lowHpBonus = 0;
 //
-//        return (healthRatio * 0.6 + myHealthRatio * 0.4) * distanceFactor + lowHpBonus;
+//        return ((1-healthRatio) * 0.6 + myHealthRatio * 0.4) * distanceFactor + lowHpBonus;
 //    }
 
     
 
-    public static String selectWeaponAction(Inventory inventory, Player enemy) {
+    public static String selectWeaponAction(Inventory inventory, Player player, Player enemy) {
     	
     	double gunD = 0, meleeD = 0, throwableD = 0;
-
+    	double distance = PathUtils.distance(player, enemy);
     	
         if (inventory.getGun() != null) gunD = inventory.getGun().getDamage();
         if (inventory.getThrowable() != null) throwableD = inventory.getThrowable().getDamage();
@@ -97,26 +99,53 @@ public class Combat{
         	return "throw";
         }
         
-        if (inventory.getMelee() != null && meleeD >= enemy.getHealth()) 
+        if (inventory.getMelee() != null && meleeD >= enemy.getHealth() && meleeCD <= gunCD) 
         {
-            return "attack";
+        	System.out.println("Enough Dame to kill");
+        	if (distance < 4)
+        		return "attack";
         }
         
-        if (inventory.getGun() != null) {
+        if ((gunCD > 0 && throwCD > 0 && meleeCD > 0) && inventory.getGun() != null) return "shoot";
+        
+        if (inventory.getGun() != null && gunCD == 0 && inAttackRange(player, enemy, inventory)) {
+        	gunCD = inventory.getGun().getCooldown();
+        	System.out.print("Shoot, cool down: " + gunCD);
         	return "shoot";
         }
         
-        if (inventory.getThrowable() != null) {
+        if (inventory.getThrowable() != null && throwCD == 0 && inAttackRange(player, enemy, inventory)) {
+        	throwCD = inventory.getThrowable().getCooldown();
             return "throw";
         }
 
         if (inventory.getSpecial() != null) {
             return "special";
         }
-
+        /*if (shootCount <= 0 ) {
+	        meleeCD = inventory.getMelee().getCooldown();
+	        return "attack";
+        }*/
+        
+        System.out.println("none wp is cooldown");
+        meleeCD = inventory.getMelee().getCooldown();
         return "attack";
     }
 
+    public static void updateCD() {
+    	gunCD = Math.max(0, gunCD-1);
+    	throwCD = Math.max(0, throwCD-1);
+    	meleeCD = Math.max(0, meleeCD-1);
+    	System.out.println("CoolDown : Gun-"+gunCD+" Throw-"+throwCD+" " );
+    }
+    
+    public static void resetCD() {
+    	gunCD=0;
+    	throwCD=0;
+    	meleeCD=0;
+    	System.out.println("CoolDown : Gun-"+gunCD+" Throw-"+throwCD+" " );
+    }
+    
     public static String selectWeaponAction(Inventory inventory) {
 
         if (inventory.getGun() != null) {
@@ -193,11 +222,11 @@ public class Combat{
 
     
     public static boolean hasWeapon(Inventory inventory) {
-        return inventory.getGun() != null || inventory.getSpecial() != null || inventory.getThrowable() != null;
+        return inventory.getGun() != null;
     }
 
     public static boolean needsBetterWeapon(Inventory inventory) {
     	
-        return inventory.getGun() == null && inventory.getSpecial() == null && inventory.getThrowable() == null;
+        return inventory.getGun() == null;
     }
 }

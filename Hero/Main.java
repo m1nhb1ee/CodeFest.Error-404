@@ -16,7 +16,7 @@ import java.util.List;
 
 public class Main {
     private static final String SERVER_URL = "https://cf25-server.jsclub.dev";
-    private static final String GAME_ID = "181626";
+    private static final String GAME_ID = "126600";
     private static final String PLAYER_NAME = "b1e";
     private static final String SECRET_KEY = "sk-TN9xLbiuTbyZXILhvyWJbw:skQHC0vsqGEWmjjNlB_mLLiRl1z-BUJf_OjRgcRWtGoWpxTBp9hvQ-0qqmD3BZCppSfa8wHyysKVkG5j06qwzQ";
 
@@ -55,12 +55,12 @@ class MapUpdateListener implements Emitter.Listener {
             		System.out.println("SPItem" + spItem);
             	}
             }
-            
+
             Node chest = Resource.findChest(gameMap, player);
             if (chest != null) {
 	            double distance = PathUtils.distance(player, chest);
 	            System.out.println("Checking resoure ");
-	            if (distance <= 3) searchChest(gameMap, player, inventory);
+	            if (distance <= 5) searchChest(gameMap, player, inventory);
             }
             
             if(Resource.gatherResources(gameMap, player, inventory, hero)) return;
@@ -99,6 +99,7 @@ class MapUpdateListener implements Emitter.Listener {
             try {
                 SupportItem healing = inventory.getListSupportItem().get(0);
                 hero.useItem(healing.getId());
+                Combat.updateCD();
                 System.out.println("Used healing item: " + healing.getId());
             } catch (IOException e) {
                 System.err.println("Error using healing item: " + e.getMessage());
@@ -127,17 +128,19 @@ class MapUpdateListener implements Emitter.Listener {
     private void searchCombat(GameMap gameMap, Player player, Inventory inventory) throws IOException {
     	
     	Combat.CombatTarget enemy = Combat.findBestTarget(gameMap, player, inventory);
-    	
+
         if (enemy == null) {
             state = "RESOURCE_GATHER";
             System.out.println("no enemy");
             return;
         }
+        
+    	
 
     	double hitsToKill = enemy.target.getHealth() / inventory.getMelee().getDamage() ;
     	double timeToKill = hitsToKill * inventory.getMelee().getCooldown();
     	
-    	if (timeToKill > 2.0) {
+    	if (timeToKill > 3.0) {
 	    	Weapon weapon = Resource.findWeapon(gameMap, player, inventory);
 	    	if (weapon != null) {
 		        if (Combat.needsBetterWeapon(inventory)) {
@@ -147,19 +150,21 @@ class MapUpdateListener implements Emitter.Listener {
 		        }
 	    	}
     	}
-
-        double distance = PathUtils.distance(player, enemy.target);
+    	
+    	double distance = PathUtils.distance(player, enemy.target);
         System.out.println("Target: " + enemy.target.getID() + " | Distance: " + distance);
 
         if (Combat.inAttackRange(player, enemy.target, inventory))
         	System.out.println("In atk range " + enemy.target +" "+ distance);
         	if (tryAttack(player, enemy.target, inventory, distance, gameMap)) {
+        		Combat.updateCD();
 	            return;
         }
 
         String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, enemy.target, true);
         if (path != null && !path.isEmpty()) {
             hero.move(path);
+            Combat.updateCD();
             System.out.println("Moving to enemy: " + path);
         } else {
         	System.out.println("Cannot reach enemy, switching to resource gathering");
@@ -201,6 +206,7 @@ class MapUpdateListener implements Emitter.Listener {
     		
     		System.out.println("HP low, try to use" + inventory.getListSupportItem().get(0).getId());
     		hero.useItem(inventory.getListSupportItem().get(0).getId());
+    		Combat.updateCD();
     	
     	}
     	
@@ -214,6 +220,9 @@ class MapUpdateListener implements Emitter.Listener {
 
     private void searchChest(GameMap gameMap, Player player, Inventory inventory) throws IOException {
         Node chest = Resource.findChest(gameMap, player);
+        
+        System.out.println("Chest found: "+ chest);
+        
         if (chest == null) {
         	state = "Combat";
         	return;
@@ -231,9 +240,11 @@ class MapUpdateListener implements Emitter.Listener {
         String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, chest, true);
         if (path != null && distance > 1) {
             hero.move(path);
+            Combat.updateCD();
             System.out.println("Moving to chest: " + path);
         } else {
             hero.attack(direction);
+            Combat.updateCD();
         }
     }
 
@@ -251,8 +262,8 @@ class MapUpdateListener implements Emitter.Listener {
                     hero.shoot(direction);
                     System.out.println("Shooting " + direction);
                     return true;
-                }
-                System.out.print("cant attack " + direction);
+                } 	
+                System.out.println("cant attack " + direction);
             }
             case "throw" -> {
             	
@@ -263,7 +274,7 @@ class MapUpdateListener implements Emitter.Listener {
                 	distance = PathUtils.distance(player, target);
                 	
                     hero.throwItem(direction);
-                    hero.move(Navigator.getDodgeDirection(player, target, gameMap));
+
                     System.out.println("Throwing " + direction);
                     return true;
                 }
@@ -275,13 +286,12 @@ class MapUpdateListener implements Emitter.Listener {
                 if (inventory.getSpecial() != null) {
                     hero.useSpecial(direction);
                     if (distance <= 1) hero.attack(direction);
-                    hero.move(Navigator.getDodgeDirection(player, target, gameMap));
                     System.out.println("Using special " + direction);
                     return true;
                 }
             }
             case "attack" -> {
-                if (distance <= 1) {
+                if (distance <= inventory.getMelee().getRange()[1]) {
                     hero.attack(direction);
                     
                     System.out.println("State "+state+" Attacking " + direction);
@@ -289,13 +299,13 @@ class MapUpdateListener implements Emitter.Listener {
                 }
             }
         }
+        
         return false;
     }
     
     private boolean tryAttack(Player player, Player target, Inventory inventory, double distance, GameMap gameMap) throws IOException {
         String direction = Navigator.getDirection(player, target);
-        String action = Combat.selectWeaponAction(inventory, target);
-        double hp = target.getHealth();
+        String action = Combat.selectWeaponAction(inventory, player, target);
         
         switch (action) {
             case "shoot" -> {
@@ -304,8 +314,7 @@ class MapUpdateListener implements Emitter.Listener {
                 if (inventory.getGun() != null &&  Navigator.checkObstacles(player, target, gameMap, inventory)){
                     hero.shoot(direction);
                     System.out.println("Shooting " + direction);
-                    if (hp == target.getHealth()) action = "attack";
-                    else return true;
+                    return true;
                 }
                 System.out.print("cant attack " + direction);
             }
@@ -314,11 +323,7 @@ class MapUpdateListener implements Emitter.Listener {
             	int[] attackRange =  inventory.getThrowable().getRange();
             	System.out.print("Atk Range " + attackRange[0] + " " + attackRange[1] + " ");
                 if (inventory.getThrowable() != null) {
-                	
-                	distance = PathUtils.distance(player, target);
-                	
                     hero.throwItem(direction);
-                    hero.move(Navigator.getDodgeDirection(player, target, gameMap));
                     System.out.println("Throwing " + direction);
                     return true;
                 }
@@ -330,7 +335,6 @@ class MapUpdateListener implements Emitter.Listener {
                 if (inventory.getSpecial() != null) {
                     hero.useSpecial(direction);
                     if (distance <= 1) hero.attack(direction);
-                    hero.move(Navigator.getDodgeDirection(player, target, gameMap));
                     System.out.println("Using special " + direction);
                     return true;
                 }
@@ -345,6 +349,7 @@ class MapUpdateListener implements Emitter.Listener {
         }
         return false;
     }
+
     
     private boolean moveToTarget(GameMap gameMap, Player player, Node target, String targetType) throws IOException {
         String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, target, true);
@@ -352,15 +357,12 @@ class MapUpdateListener implements Emitter.Listener {
 
         if (path.isEmpty()) {
             hero.pickupItem();
+            Combat.resetCD();
             System.out.println("Picked up " + targetType + target);
         } else {
         	hero.move(path);
+        	Combat.updateCD();
         	System.out.println("Moving to " + targetType + ": " + path);
-        	try {
-            hero.pickupItem();
-        	} catch(Exception e) {
-        		System.out.println("Nothing to pick up " + targetType + " at " + path);
-        	}
         }
         return true;
     }

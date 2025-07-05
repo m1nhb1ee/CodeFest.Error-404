@@ -21,9 +21,9 @@ public class Config{
     // === ITEM PRIORITIES ===
     public static final int GUN_PRIORITY = 100;
     public static final int HEALING_PRIORITY = 100;
-    public static final int SPECIAL_WEAPON_PRIORITY = 70;
-    public static final int THROWABLE_PRIORITY = 90;
-    public static final int MELEE_PRIORITY = 50;
+    public static final int SPECIAL_WEAPON_PRIORITY = 30;
+    public static final int THROWABLE_PRIORITY = 50;
+    public static final int MELEE_PRIORITY = 70;
     public static final int DRAGON_EGG_PRIORITY = 100;
     public static final int CHEST_PRIORITY = 70;
     

@@ -16,6 +16,7 @@ public class Navigator {
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_GO_THROUGH"));
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_SHOOT_THROUGH"));
         
+        
     	if (Combat.inAttackRange(myHero, currentPlayer, inventory)) {
     		for (Node node : nodes) {
             	if (node.getX() == myHero.getX() && (
@@ -32,6 +33,28 @@ public class Navigator {
     	else return false;
     }
     
+public static boolean checkObstacles(GameMap gameMap, Player player, String direct) {
+    	
+    	List<Node> nodes = new ArrayList<>(gameMap.getListObstacles());
+        nodes.removeAll(gameMap.getObstaclesByTag("CAN_GO_THROUGH"));
+        
+        int x,y;
+        x = player.getX();
+        y = player.getY();
+        
+        if (direct == "u") y=y+1;
+        else if (direct == "d") y=y-1;
+        else if (direct == "l") x=x-1;
+        else if (direct == "r") x=x+1;
+        else System.out.println("What the fvck direction");
+        
+    	for (Node node : nodes) {
+            if (node.getX() == x && node.getY() == y) return true;
+    	}
+    	
+    	return false;
+    }
+    
     public static String getDirection(Node from, Node to) {
         int dx = to.getX() - from.getX();
         int dy = to.getY() - from.getY();
@@ -41,6 +64,7 @@ public class Navigator {
     public static List<Node> getObstacles(GameMap gameMap) {
         List<Node> obstacles = new ArrayList<>(gameMap.getListObstacles());
         obstacles.removeAll(gameMap.getObstaclesByTag("CAN_GO_THROUGH"));
+        obstacles.addAll(gameMap.getObstaclesByTag("TRAP"));
         obstacles.addAll(gameMap.getListEnemies());
         obstacles.addAll(gameMap.getOtherPlayerInfo());
         return obstacles;
