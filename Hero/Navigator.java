@@ -58,11 +58,12 @@ public static boolean checkObstacles(GameMap gameMap, Player player, String dire
     	return false;
     }
     
-    public static String getDirection(Node from, Node to) {
+    public static String getAttackDirection(Node from, Node to) {
         int dx = to.getX() - from.getX();
         int dy = to.getY() - from.getY();
         return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "r" : "l") : (dy > 0 ? "u" : "d");
     }
+    
 
     public static List<Node> getObstacles(GameMap gameMap) {
         List<Node> obstacles = new ArrayList<>(gameMap.getListObstacles());
@@ -80,8 +81,8 @@ public static boolean checkObstacles(GameMap gameMap, Player player, String dire
         
 
         String[] dodgeOptions = Math.abs(dx) > Math.abs(dy) ? 
-            new String[]{"ud", "du"} :  
-            new String[]{"lr", "rl"};   
+            new String[]{"u", "d"} :  
+            new String[]{"l", "r"};   
         
 
         for (String dodge : dodgeOptions) {

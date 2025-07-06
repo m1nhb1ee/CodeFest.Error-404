@@ -185,7 +185,7 @@ public class Combat{
         int dx = target.getX() - attacker.getX();
         int dy = target.getY() - attacker.getY();
 
-        String direction = Navigator.getDirection(attacker, target);
+        String direction = Navigator.getAttackDirection(attacker, target);
         
         if (inventory.getGun() != null) {
         	int[] attackRange =  inventory.getGun().getRange();
@@ -231,7 +231,7 @@ public class Combat{
         if (inventory.getThrowable().getId()=="SMOKE") range = 3;
         else range = 1;
         
-        String direction = Navigator.getDirection(attacker, target);
+        String direction = Navigator.getAttackDirection(attacker, target);
         
 
         int[] attackRange =  inventory.getThrowable().getRange();

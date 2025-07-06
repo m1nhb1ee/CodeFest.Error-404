@@ -311,7 +311,7 @@ public class Resource {
             if (inventory.getThrowable() == null) {
                 for (Weapon throwable : gameMap.getAllThrowable()) {
                     double distance = PathUtils.distance(currentPlayer, throwable);
-                    if (distance <= 4) {
+                    if (distance <= 5) {
                     	System.out.println("detect throwable");
                         if (distance == 0) {
                             hero.pickupItem();
@@ -338,7 +338,7 @@ public class Resource {
             if (inventory.getSpecial() == null) {
                 for (Weapon special : gameMap.getAllSpecial()) {
                     double distance = PathUtils.distance(currentPlayer, special);
-                    if (distance <= 3.0 && !"SAHUR_BAT".equals(special.getId()) && !"ROPE".equals(special.getId())) {
+                    if (distance <= 5.0) {
                     	System.out.println("detect special");
                         if (distance == 0) {
                             hero.pickupItem();
