@@ -16,7 +16,7 @@ import java.util.List;
 
 public class Main {
     private static final String SERVER_URL = "https://cf25-server.jsclub.dev";
-    private static final String GAME_ID = "141900";
+    private static final String GAME_ID = "176548";
     private static final String PLAYER_NAME = "b1e";
     private static final String SECRET_KEY = "sk-6FV6QQglQcSySWg00CoBFA:Y3EOpPmZiUjiiCwxLlCk683mNtj9oEac-djj__XNqK4Jyp2gLD-eGyXtq0jq-Gf6BO_8XA3t3ArEFVzGxZHAEQ";
 
@@ -31,7 +31,7 @@ class MapUpdateListener implements Emitter.Listener {
     private final Hero hero;
     private String state = "WEAPON_SEARCH";
     private String previousState = "";
-
+    private String lastPath = "";
     public MapUpdateListener(Hero hero) {
         this.hero = hero;
     }
@@ -56,12 +56,6 @@ class MapUpdateListener implements Emitter.Listener {
             updateState(player, inventory);
             
             System.out.println("=== Current state: " + state + " ===");
-
-            if (!inventory.getListSupportItem().isEmpty()) {
-                for (SupportItem spItem : inventory.getListSupportItem()) {
-                    System.out.println("SupportItem: " + spItem);
-                }
-            }
 
             if (handleLooting(gameMap, player, inventory)) {
                 return;
@@ -183,7 +177,7 @@ class MapUpdateListener implements Emitter.Listener {
         
         double distance = PathUtils.distance(player, enemy.target);
         
-        // Calculate combat efficiency
+        //combat efficiency
         double damage = inventory.getMelee().getDamage();
         double cooldown = inventory.getMelee().getCooldown();
         double hitsToKill = Math.ceil(enemy.target.getHealth() / damage);
@@ -213,9 +207,13 @@ class MapUpdateListener implements Emitter.Listener {
                 return;
             }
         }
-
+        
         String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, enemy.target, true);
+        
         if (path != null && !path.isEmpty()) {
+        	if (path.equals(lastPath)) lastPath = new StringBuilder(path).reverse().toString();
+            else lastPath = path;
+            path = lastPath;
             hero.move(path);
             Combat.updateCD();
             System.out.println("Moving to enemy: " + path);
@@ -397,6 +395,7 @@ class MapUpdateListener implements Emitter.Listener {
         
         switch (action) {
             case "shoot" -> {
+            	System.out.println("Case: " + action);
                 if (inventory.getGun() != null) {
                     int[] attackRange = inventory.getGun().getRange();
                     System.out.println("Shoot range: " + attackRange[0] + "-" + attackRange[1]);
@@ -411,6 +410,7 @@ class MapUpdateListener implements Emitter.Listener {
                 return false;
             }
             case "throw" -> {
+            	System.out.println("Case: " + action);
                 if (inventory.getThrowable() != null) {
                     int[] attackRange = inventory.getThrowable().getRange();
                     System.out.println("Throw range: " + attackRange[0] + "-" + attackRange[1]);
@@ -422,6 +422,7 @@ class MapUpdateListener implements Emitter.Listener {
                 return false;
             }
             case "special" -> {
+            	System.out.println("Case: " + action);
                 if (inventory.getSpecial() != null) {
                     int[] attackRange = inventory.getSpecial().getRange();
                     System.out.println("Special range: " + attackRange[0] + "-" + attackRange[1]);
@@ -444,6 +445,7 @@ class MapUpdateListener implements Emitter.Listener {
                 return false;
             }
             case "dodge" -> {
+            	System.out.println("Case: " + action);
                 String dodgeDirection = Navigator.getDodgeDirection(player, target, gameMap);
                 if (dodgeDirection != null && !dodgeDirection.isEmpty()) {
                     hero.move(dodgeDirection);

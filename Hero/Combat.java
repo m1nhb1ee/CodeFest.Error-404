@@ -102,8 +102,10 @@ public class Combat{
         if (inventory.getMelee() != null && meleeD >= enemy.getHealth() && meleeCD == 0) 
         {
         	System.out.println("Enough Dame to kill");
-        	if (distance < 4)
+        	if (distance < 4) {
+        		
         		return "attack";
+        	}
         }
         
         if (gunCD > 0 && throwCD > 0 && meleeCD > 0 && inAttackRange(player, enemy, inventory)) return "dodge";
@@ -124,7 +126,7 @@ public class Combat{
         }
         
 
-        System.out.println("none wp is cooldown");
+        System.out.println("none wp is ready");
         meleeCD = inventory.getMelee().getCooldown();
         return "attack";
 
