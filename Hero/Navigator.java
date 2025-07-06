@@ -1,9 +1,11 @@
 package Hero;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import jsclub.codefest.sdk.algorithm.PathUtils;
 import jsclub.codefest.sdk.base.Node;
 import jsclub.codefest.sdk.model.GameMap;
 import jsclub.codefest.sdk.model.Inventory;
@@ -37,6 +39,7 @@ public static boolean checkObstacles(GameMap gameMap, Player player, String dire
     	
     	List<Node> nodes = new ArrayList<>(gameMap.getListObstacles());
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_GO_THROUGH"));
+        nodes.addAll(gameMap.getOtherPlayerInfo());
         
         int x,y;
         x = player.getX();
@@ -118,4 +121,24 @@ public static boolean checkObstacles(GameMap gameMap, Player player, String dire
         }
         return true;
     }
+
+
+    public static boolean shouldLootChest(Inventory inventory, double chestDistance, double enemyDistance) {
+
+        if (chestDistance >= enemyDistance) {
+            return false;
+        }
+        
+        if ("HAND".equals(inventory.getMelee().getId()) && inventory.getGun() != null) {
+            return chestDistance <= 7;
+        }
+        
+        return chestDistance <= 5;
+        
+    }
+        
+    public static boolean keepLooting(GameMap gameMap, Player player, Inventory inventory) {
+    	double distance = Combat.findBestTarget(gameMap, player, inventory).distance;
+        return distance > 1 ;
+        }   
 }

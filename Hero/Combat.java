@@ -94,19 +94,19 @@ public class Combat{
         if (inventory.getThrowable() != null) throwableD = inventory.getThrowable().getDamage();
         if (inventory.getMelee() != null) meleeD = inventory.getMelee().getDamage();
 
-        if (inventory.getThrowable() != null && throwableD >= enemy.getHealth()) 
+        if (inventory.getThrowable() != null && throwableD >= enemy.getHealth() && inThrowRange(player, enemy, inventory) && throwCD ==  0) 
         {
         	return "throw";
         }
         
-        if (inventory.getMelee() != null && meleeD >= enemy.getHealth() && meleeCD <= gunCD) 
+        if (inventory.getMelee() != null && meleeD >= enemy.getHealth() && meleeCD == 0) 
         {
         	System.out.println("Enough Dame to kill");
         	if (distance < 4)
         		return "attack";
         }
         
-        if ((gunCD > 0 && throwCD > 0 && meleeCD > 0) && inventory.getGun() != null) return "shoot";
+        if (gunCD > 0 && throwCD > 0 && meleeCD > 0 && inAttackRange(player, enemy, inventory)) return "dodge";
         
         if (inventory.getGun() != null && gunCD == 0 && inAttackRange(player, enemy, inventory)) {
         	gunCD = inventory.getGun().getCooldown();
@@ -114,7 +114,7 @@ public class Combat{
         	return "shoot";
         }
         
-        if (inventory.getThrowable() != null && throwCD == 0 && inAttackRange(player, enemy, inventory)) {
+        if (inventory.getThrowable() != null && throwCD == 0 && inThrowRange(player, enemy, inventory)) {
         	throwCD = inventory.getThrowable().getCooldown();
             return "throw";
         }
@@ -122,14 +122,12 @@ public class Combat{
         if (inventory.getSpecial() != null) {
             return "special";
         }
-        /*if (shootCount <= 0 ) {
-	        meleeCD = inventory.getMelee().getCooldown();
-	        return "attack";
-        }*/
         
+
         System.out.println("none wp is cooldown");
         meleeCD = inventory.getMelee().getCooldown();
         return "attack";
+
     }
 
     public static void updateCD() {
@@ -220,13 +218,41 @@ public class Combat{
         };
     }
 
+    public static boolean inThrowRange(Node attacker, Node target, Inventory inventory) {
+    	
+    	int width,length;
+
+        int dx = target.getX() - attacker.getX();
+        int dy = target.getY() - attacker.getY();
+        int range;
+        
+        if (inventory.getThrowable().getId()=="SMOKE") range = 3;
+        else range = 1;
+        
+        String direction = Navigator.getDirection(attacker, target);
+        
+
+        int[] attackRange =  inventory.getThrowable().getRange();
+        width = attackRange[0];
+        length = attackRange[1];
+        
+        
+        return switch (direction) {
+            case "u" -> dy > 0 && dy <= length+range && dy >= length-range && Math.abs(dx) <= (width+range)/2;
+            case "d" -> dy < 0 && -dy <= length+range && -dy >= length-range && Math.abs(dx) <= (width+range)/2;
+            case "l" -> dx < 0 && -dx <= length+range && -dx >= length-range && Math.abs(dy) <= (width+range)/2;
+            case "r" -> dx > 0 && dx <= length+range && dx >= length-range && Math.abs(dy) <= (width+range)/2;
+            default -> false;
+        };
+    }
     
     public static boolean hasWeapon(Inventory inventory) {
-        return inventory.getGun() != null;
+        return inventory.getGun() != null ;
     }
 
     public static boolean needsBetterWeapon(Inventory inventory) {
-    	
-        return inventory.getGun() == null;
+        return inventory.getGun() == null || inventory.getMelee().getId() == "HAND" || inventory.getThrowable() == null;
     }
+    
+
 }

@@ -16,9 +16,9 @@ import java.util.List;
 
 public class Main {
     private static final String SERVER_URL = "https://cf25-server.jsclub.dev";
-    private static final String GAME_ID = "126600";
+    private static final String GAME_ID = "141900";
     private static final String PLAYER_NAME = "b1e";
-    private static final String SECRET_KEY = "sk-TN9xLbiuTbyZXILhvyWJbw:skQHC0vsqGEWmjjNlB_mLLiRl1z-BUJf_OjRgcRWtGoWpxTBp9hvQ-0qqmD3BZCppSfa8wHyysKVkG5j06qwzQ";
+    private static final String SECRET_KEY = "sk-6FV6QQglQcSySWg00CoBFA:Y3EOpPmZiUjiiCwxLlCk683mNtj9oEac-djj__XNqK4Jyp2gLD-eGyXtq0jq-Gf6BO_8XA3t3ArEFVzGxZHAEQ";
 
     public static void main(String[] args) throws IOException {
         Hero hero = new Hero(GAME_ID, PLAYER_NAME, SECRET_KEY);
@@ -30,6 +30,7 @@ public class Main {
 class MapUpdateListener implements Emitter.Listener {
     private final Hero hero;
     private String state = "WEAPON_SEARCH";
+    private String previousState = "";
 
     public MapUpdateListener(Hero hero) {
         this.hero = hero;
@@ -38,32 +39,33 @@ class MapUpdateListener implements Emitter.Listener {
     @Override
     public void call(Object... args) {
         try {
-        	
-        	System.out.println("\n=== Processing game update == =");
-        	
+            System.out.println("\n=== Processing game update ===");
+            
             GameMap gameMap = hero.getGameMap();
             gameMap.updateOnUpdateMap(args[0]);
             Player player = gameMap.getCurrentPlayer();
             Inventory inventory = hero.getInventory();
             
+
+            if (player.getHealth() <= 0) {
+            	state = "WEAPON_SEARCH";
+                System.out.println("Player is dead, skipping update");
+                return;
+            }
+            
             updateState(player, inventory);
             
             System.out.println("=== Current state: " + state + " ===");
-            
+
             if (!inventory.getListSupportItem().isEmpty()) {
-            	for (SupportItem spItem : inventory.getListSupportItem()) {
-            		System.out.println("SPItem" + spItem);
-            	}
+                for (SupportItem spItem : inventory.getListSupportItem()) {
+                    System.out.println("SupportItem: " + spItem);
+                }
             }
 
-            Node chest = Resource.findChest(gameMap, player);
-            if (chest != null) {
-	            double distance = PathUtils.distance(player, chest);
-	            System.out.println("Checking resoure ");
-	            if (distance <= 5) searchChest(gameMap, player, inventory);
+            if (handleLooting(gameMap, player, inventory)) {
+                return;
             }
-            
-            if(Resource.gatherResources(gameMap, player, inventory, hero)) return;
             
             System.out.println("HP: " + player.getHealth() + " | State: " + state);
 
@@ -72,27 +74,31 @@ class MapUpdateListener implements Emitter.Listener {
                 case "COMBAT" -> searchCombat(gameMap, player, inventory);
                 case "RESOURCE_GATHER" -> searchResources(gameMap, player, inventory);
                 case "HEALING" -> searchHealing(gameMap, player, inventory);
+                default -> {
+                    System.out.println("Unknown state: " + state + ", defaulting to WEAPON_SEARCH");
+                    state = "WEAPON_SEARCH";
+                }
             }
 
         } catch (Exception e) {
-            System.err.println("Error: " + e.getMessage());
+            System.err.println("Error in MapUpdateListener: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     private void updateState(Player player, Inventory inventory) {
-
+        previousState = state;
+        
         if (player.getHealth() <= 0) {
             state = "WEAPON_SEARCH";
             System.out.println("Hero died, switching to WEAPON_SEARCH");
-
+            return;
         }
         
-
         if (player.getHealth() < Config.HP_DANGER_THRESHOLD) {
             state = "HEALING";
-            System.out.println("HP critical, switching to HEALING");
-
+            System.out.println("HP critical (" + player.getHealth() + "), switching to HEALING");
+            return;
         }
 
         if (player.getHealth() <= Config.HP_MEDIUM_THRESHOLD && !inventory.getListSupportItem().isEmpty()) {
@@ -104,61 +110,108 @@ class MapUpdateListener implements Emitter.Listener {
             } catch (IOException e) {
                 System.err.println("Error using healing item: " + e.getMessage());
             }
-
         }
 
-        System.out.println("State remains: " + state);
+        if (!state.equals(previousState)) {
+            System.out.println("State changed from " + previousState + " to " + state);
+        } else {
+            System.out.println("State remains: " + state);
+        }
     }
+    private boolean handleLooting(GameMap gameMap, Player player, Inventory inventory) throws IOException {
+        if (!Navigator.keepLooting(gameMap, player, inventory)) {
+            return false;
+        }
 
+        Node chest = Resource.findChest(gameMap, player);
+        if (chest != null) {
+            double chestDistance = PathUtils.distance(player, chest);
+
+            Combat.CombatTarget nearestEnemy = Combat.findBestTarget(gameMap, player, inventory);
+            double enemyDistance = (nearestEnemy != null) ? nearestEnemy.distance : Double.MAX_VALUE;
+            
+            System.out.println("Chest distance: " + chestDistance + ", Enemy distance: " + enemyDistance);
+            
+            if (Navigator.shouldLootChest(inventory, chestDistance, enemyDistance)) {
+                searchChest(gameMap, player, inventory);
+                return true;
+            }
+        }
+        
+        if (Resource.gatherResources(gameMap, player, inventory, hero)) {
+            state = "COMBAT";
+            return true;
+        }
+        
+        return false;
+    }
     private void searchWeapon(GameMap gameMap, Player player, Inventory inventory) throws IOException {
-    	
-        Weapon weapon = Resource.findWeapon(gameMap, player, inventory);
-    	
+        System.out.println("Searching for weapon...");
+
         if (Combat.hasWeapon(inventory)) {
+            System.out.println("Found weapon in inventory, switching to COMBAT");
             state = "COMBAT";
             return;
         }
-        
-        if (weapon == null) System.out.print("no weapon found");
-        else if (moveToTarget(gameMap, player, weapon, "weapon")) return;
 
+        Weapon weapon = Resource.findWeapon(gameMap, player, inventory);
+        
+        if (weapon == null) {
+            System.out.println("No weapon found on map, searching chest");
+            searchChest(gameMap, player, inventory);
+            return;
+        }
+        
+        if (moveToTarget(gameMap, player, weapon, "weapon")) {
+            return;
+        }
+
+        System.out.println("Cannot reach weapon, searching chest");
         searchChest(gameMap, player, inventory);
     }
 
     private void searchCombat(GameMap gameMap, Player player, Inventory inventory) throws IOException {
-    	
-    	Combat.CombatTarget enemy = Combat.findBestTarget(gameMap, player, inventory);
-
+        System.out.println("Searching for combat...");
+        
+        Combat.CombatTarget enemy = Combat.findBestTarget(gameMap, player, inventory);
+        
         if (enemy == null) {
+            System.out.println("No enemy found, switching to RESOURCE_GATHER");
             state = "RESOURCE_GATHER";
-            System.out.println("no enemy");
             return;
         }
         
-    	
+        double distance = PathUtils.distance(player, enemy.target);
+        
+        // Calculate combat efficiency
+        double damage = inventory.getMelee().getDamage();
+        double cooldown = inventory.getMelee().getCooldown();
+        double hitsToKill = Math.ceil(enemy.target.getHealth() / damage);
+        double timeToKill = (hitsToKill - 1) * cooldown + distance; 
+        
+        System.out.println("Combat analysis - Target: " + enemy.target.getID() + 
+                          ", Distance: " + distance + 
+                          ", Hits to kill: " + hitsToKill + 
+                          ", Time to kill: " + timeToKill + "s");
+        
+        
+        Weapon weapon = Resource.findWeapon(gameMap, player, inventory);
+        Node chest = Resource.findChest(gameMap, player);
+        
+        if ((weapon != null || chest != null) && timeToKill > 4.0) {
+            if (!Combat.hasWeapon(inventory)) {
+                System.out.println("Combat will take too long and no weapon available, switching to WEAPON_SEARCH");
+                state = "WEAPON_SEARCH";
+                return;
+            }
+        }
 
-    	double hitsToKill = enemy.target.getHealth() / inventory.getMelee().getDamage() ;
-    	double timeToKill = hitsToKill * inventory.getMelee().getCooldown();
-    	
-    	if (timeToKill > 3.0) {
-	    	Weapon weapon = Resource.findWeapon(gameMap, player, inventory);
-	    	if (weapon != null) {
-		        if (Combat.needsBetterWeapon(inventory)) {
-		            state = "WEAPON_SEARCH";
-		            System.out.println("no weapon");
-		            return;
-		        }
-	    	}
-    	}
-    	
-    	double distance = PathUtils.distance(player, enemy.target);
-        System.out.println("Target: " + enemy.target.getID() + " | Distance: " + distance);
-
-        if (Combat.inAttackRange(player, enemy.target, inventory))
-        	System.out.println("In atk range " + enemy.target +" "+ distance);
-        	if (tryAttack(player, enemy.target, inventory, distance, gameMap)) {
-        		Combat.updateCD();
-	            return;
+        if (Combat.inAttackRange(player, enemy.target, inventory)) {
+            System.out.println("In attack range - distance: " + distance);
+            if (tryAttack(player, enemy.target, inventory, distance, gameMap)) {
+                Combat.updateCD();
+                return;
+            }
         }
 
         String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, enemy.target, true);
@@ -167,88 +220,119 @@ class MapUpdateListener implements Emitter.Listener {
             Combat.updateCD();
             System.out.println("Moving to enemy: " + path);
         } else {
-        	System.out.println("Cannot reach enemy, switching to resource gathering");
+            System.out.println("Cannot reach enemy, switching to RESOURCE_GATHER");
             state = "RESOURCE_GATHER";
         }
     }
 
     private void searchResources(GameMap gameMap, Player player, Inventory inventory) throws IOException {
-
-
-
+        System.out.println("Searching for resources...");
+        
         if (player.getHealth() < Config.HP_DANGER_THRESHOLD) {
-        	
-        	SupportItem healing = Resource.findHealing(gameMap, player);
-            if (healing != null && moveToTarget(gameMap, player, healing, "healing")) return;
+            SupportItem healing = Resource.findHealing(gameMap, player);
+            if (healing != null && moveToTarget(gameMap, player, healing, "healing")) {
+                return;
+            }
             
+            System.out.println("Low health but no healing found, switching to HEALING");
             state = "HEALING";
             return;
         }
         
         if (Combat.needsBetterWeapon(inventory)) {
             Weapon weapon = Resource.findWeapon(gameMap, player, inventory);
-            System.out.println("Aim to " + weapon);
-            if (weapon != null && moveToTarget(gameMap, player, weapon, "better weapon")) return;
-            else searchChest(gameMap, player, inventory);
+            System.out.println("Looking for better weapon: " + weapon);
+            
+            if (weapon != null && moveToTarget(gameMap, player, weapon, "better weapon")) {
+                return;
+            }
+
+            System.out.println("No better weapon found, searching chest");
+            searchChest(gameMap, player, inventory);
+            return;
         }
-        System.out.println("Cant reach any Weapon, switch to Combat");
+        
+        System.out.println("No resources needed, switching to COMBAT");
         state = "COMBAT";
     }
 
     private void searchHealing(GameMap gameMap, Player player, Inventory inventory) throws IOException {
-    	
-    	if (player.getHealth() > Config.HP_MEDIUM_THRESHOLD) {
-        	state = "COMBAT";
-        	return;
-        }
-    	
-    	if (!inventory.getListSupportItem().isEmpty()) { 
-    		
-    		System.out.println("HP low, try to use" + inventory.getListSupportItem().get(0).getId());
-    		hero.useItem(inventory.getListSupportItem().get(0).getId());
-    		Combat.updateCD();
-    	
-    	}
-    	
-        SupportItem healing = Resource.findHealing(gameMap, player);
-        System.out.print("Healing found : " + healing);
-        if (healing == null)	searchChest(gameMap, player, inventory);
-        else if (moveToTarget(gameMap, player, healing, "healing")) return;
+        System.out.println("Searching for healing...");
+        
 
+        if (player.getHealth() > Config.HP_MEDIUM_THRESHOLD) {
+            System.out.println("Health recovered, switching to COMBAT");
+            state = "COMBAT";
+            return;
+        }
+        
+
+        if (!inventory.getListSupportItem().isEmpty()) { 
+            SupportItem healingItem = inventory.getListSupportItem().get(0);
+            System.out.println("HP low, using healing item: " + healingItem.getId());
+            try {
+                hero.useItem(healingItem.getId());
+                Combat.updateCD();
+                return;
+            } catch (IOException e) {
+                System.err.println("Error using healing item: " + e.getMessage());
+            }
+        }
+        
+
+        SupportItem healing = Resource.findHealing(gameMap, player);
+        System.out.println("Healing item found on map: " + healing);
+        
+        if (healing == null) {
+            System.out.println("No healing items found, searching chest");
+            searchChest(gameMap, player, inventory);
+            return;
+        }
+        
+        if (moveToTarget(gameMap, player, healing, "healing")) {
+            return;
+        }
+
+        System.out.println("Cannot reach healing, switching to RESOURCE_GATHER");
         state = "RESOURCE_GATHER";
     }
 
     private void searchChest(GameMap gameMap, Player player, Inventory inventory) throws IOException {
         Node chest = Resource.findChest(gameMap, player);
         
-        System.out.println("Chest found: "+ chest);
+        System.out.println("Chest found: " + chest);
         
         if (chest == null) {
-        	state = "Combat";
-        	return;
+            System.out.println("No chest found, switching to COMBAT");
+            state = "COMBAT";
+            return;
         }
         
-        // attack
         double distance = PathUtils.distance(player, chest);
         String direction = Navigator.getDirection(player, chest);
 
-        if (Combat.inAttackRange(player, chest, inventory) && tryAttack(player, chest, inventory, distance, gameMap)) {
-            return;
+
+        if (Combat.inAttackRange(player, chest, inventory)) {
+            if (tryAttack(player, chest, inventory, distance, gameMap)) {
+                Combat.updateCD();
+                return;
+            }
         }
 
-        // move to
         String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, chest, true);
-        if (path != null && distance > 1) {
+        if (path != null && !path.isEmpty() && distance > 1) {
             hero.move(path);
             Combat.updateCD();
             System.out.println("Moving to chest: " + path);
-        } else {
+        } else if (path != null && path.isEmpty()) {
             hero.attack(direction);
             Combat.updateCD();
+            System.out.println("Attacking chest: " + direction);
+        } else {
+            System.out.println("Cannot reach chest, switching to COMBAT");
+            state = "COMBAT";
         }
     }
-
-
 
     private boolean tryAttack(Player player, Node target, Inventory inventory, double distance, GameMap gameMap) throws IOException {
         String direction = Navigator.getDirection(player, target);
@@ -256,47 +340,51 @@ class MapUpdateListener implements Emitter.Listener {
         
         switch (action) {
             case "shoot" -> {
-            	int[] attackRange =  inventory.getGun().getRange();
-            	System.out.print("Atk Range " + attackRange[0] + " " + attackRange[1] + " ");
-                if (inventory.getGun() != null &&  Navigator.checkObstacles(player, target, gameMap, inventory)){
-                    hero.shoot(direction);
-                    System.out.println("Shooting " + direction);
-                    return true;
-                } 	
-                System.out.println("cant attack " + direction);
+                if (inventory.getGun() != null) {
+                    int[] attackRange = inventory.getGun().getRange();
+                    System.out.println("Shoot range: " + attackRange[0] + "-" + attackRange[1]);
+                    
+                    if (Navigator.checkObstacles(player, target, gameMap, inventory)) {
+                        hero.shoot(direction);
+                        System.out.println("Shooting " + direction);
+                        return true;
+                    }
+                }
+                System.out.println("Cannot shoot at " + direction);
+                return false;
             }
             case "throw" -> {
-            	
-            	int[] attackRange =  inventory.getThrowable().getRange();
-            	System.out.print("Atk Range " + attackRange[0] + " " + attackRange[1] + " ");
                 if (inventory.getThrowable() != null) {
-                	
-                	distance = PathUtils.distance(player, target);
-                	
+                    int[] attackRange = inventory.getThrowable().getRange();
+                    System.out.println("Throw range: " + attackRange[0] + "-" + attackRange[1]);
+                    
                     hero.throwItem(direction);
-
                     System.out.println("Throwing " + direction);
                     return true;
                 }
+                return false;
             }
             case "special" -> {
-
-            	int[] attackRange =  inventory.getSpecial().getRange();
-            	System.out.print("Atk Range " + attackRange[0] + " " + attackRange[1] + " ");
                 if (inventory.getSpecial() != null) {
+                    int[] attackRange = inventory.getSpecial().getRange();
+                    System.out.println("Special range: " + attackRange[0] + "-" + attackRange[1]);
+                    
                     hero.useSpecial(direction);
-                    if (distance <= 1) hero.attack(direction);
+                    if (distance <= 1) {
+                        hero.attack(direction);
+                    }
                     System.out.println("Using special " + direction);
                     return true;
                 }
+                return false;
             }
             case "attack" -> {
-                if (distance <= inventory.getMelee().getRange()[1]) {
+                if (inventory.getMelee() != null && distance <= inventory.getMelee().getRange()[1]) {
                     hero.attack(direction);
-                    
-                    System.out.println("State "+state+" Attacking " + direction);
+                    System.out.println("Attacking " + direction + " (state: " + state + ")");
                     return true;
                 }
+                return false;
             }
         }
         
@@ -309,62 +397,84 @@ class MapUpdateListener implements Emitter.Listener {
         
         switch (action) {
             case "shoot" -> {
-            	int[] attackRange =  inventory.getGun().getRange();
-            	System.out.print("Atk Range " + attackRange[0] + " " + attackRange[1] + " ");
-                if (inventory.getGun() != null &&  Navigator.checkObstacles(player, target, gameMap, inventory)){
-                    hero.shoot(direction);
-                    System.out.println("Shooting " + direction);
-                    return true;
+                if (inventory.getGun() != null) {
+                    int[] attackRange = inventory.getGun().getRange();
+                    System.out.println("Shoot range: " + attackRange[0] + "-" + attackRange[1]);
+                    
+                    if (Navigator.checkObstacles(player, target, gameMap, inventory)) {
+                        hero.shoot(direction);
+                        System.out.println("Shooting " + direction);
+                        return true;
+                    }
                 }
-                System.out.print("cant attack " + direction);
+                System.out.println("Cannot shoot at " + direction);
+                return false;
             }
             case "throw" -> {
-            	
-            	int[] attackRange =  inventory.getThrowable().getRange();
-            	System.out.print("Atk Range " + attackRange[0] + " " + attackRange[1] + " ");
                 if (inventory.getThrowable() != null) {
+                    int[] attackRange = inventory.getThrowable().getRange();
+                    System.out.println("Throw range: " + attackRange[0] + "-" + attackRange[1]);
+                    
                     hero.throwItem(direction);
                     System.out.println("Throwing " + direction);
                     return true;
                 }
+                return false;
             }
             case "special" -> {
-
-            	int[] attackRange =  inventory.getSpecial().getRange();
-            	System.out.print("Atk Range " + attackRange[0] + " " + attackRange[1] + " ");
                 if (inventory.getSpecial() != null) {
+                    int[] attackRange = inventory.getSpecial().getRange();
+                    System.out.println("Special range: " + attackRange[0] + "-" + attackRange[1]);
+                    
                     hero.useSpecial(direction);
-                    if (distance <= 1) hero.attack(direction);
+                    if (distance <= 1) {
+                        hero.attack(direction);
+                    }
                     System.out.println("Using special " + direction);
                     return true;
                 }
+                return false;
             }
             case "attack" -> {
                 if (distance <= 1) {
                     hero.attack(direction);
-                    System.out.println("State "+state+" Attacking " + direction);
+                    System.out.println("Attacking " + direction + " (state: " + state + ")");
                     return true;
+                }
+                return false;
+            }
+            case "dodge" -> {
+                String dodgeDirection = Navigator.getDodgeDirection(player, target, gameMap);
+                if (dodgeDirection != null && !dodgeDirection.isEmpty()) {
+                    hero.move(dodgeDirection);
+                    System.out.println("Dodging " + dodgeDirection);
+                    return true;
+                } else {
+                    System.out.println("Cannot find dodge direction");
+                    return false;
                 }
             }
         }
         return false;
     }
-
     
     private boolean moveToTarget(GameMap gameMap, Player player, Node target, String targetType) throws IOException {
         String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, target, true);
-        if (path == null) return false;
+        
+        if (path == null) {
+            System.out.println("Cannot find path to " + targetType);
+            return false;
+        }
 
         if (path.isEmpty()) {
             hero.pickupItem();
             Combat.resetCD();
-            System.out.println("Picked up " + targetType + target);
+            System.out.println("Picked up " + targetType + ": " + target);
         } else {
-        	hero.move(path);
-        	Combat.updateCD();
-        	System.out.println("Moving to " + targetType + ": " + path);
+            hero.move(path);
+            Combat.updateCD();
+            System.out.println("Moving to " + targetType + ": " + path);
         }
         return true;
     }
-
 }
