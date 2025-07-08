@@ -1,4 +1,4 @@
-package Hero;
+package lastSrc;
 
 import jsclub.codefest.sdk.model.GameMap;
 import jsclub.codefest.sdk.model.Inventory;
@@ -10,7 +10,7 @@ import java.util.*;
 
 public class Combat{
     
-	public static double gunCD, throwCD, meleeCD, shootCount;
+	public static double gunCD, throwCD, meleeCD, specialCD, shootCount;
 	
     public static class CombatTarget {
         public final Player target;
@@ -58,32 +58,6 @@ public class Combat{
                 .max(Comparator.comparingDouble(CombatTarget::getScore))
                 .orElse(null);
     }
-    
-
-//    private static double calculateThreat(Player enemy, double distance) {
-//        double baseThreat = enemy.getHealth() / 100.0;
-//    	double baseThreat = distance;
-//        return baseThreat;
-//    }
-
-//    private static double calculateOpportunity(Player enemy, double distance, Player currentPlayer) {
-//    	
-//        double healthRatio = enemy.getHealth() / 100.0;           
-//        double myHealthRatio = currentPlayer.getHealth() / 100.0;    
-//        
-//        if (myHealthRatio >= healthRatio) return 2;
-//        
-//        double distanceFactor = 1.0 / distance ;     
-//        double lowHpBonus;
-//        if (enemy.getHealth() <= Config.CRIT_HP_TARGET) lowHpBonus = 0.5;
-//        else if (enemy.getHealth() <= Config.LOW_HP_TARGET) lowHpBonus = 0.3;
-//        else if (enemy.getHealth() <= Config.MED_HP_TARGET) lowHpBonus = 0.1;
-//        else lowHpBonus = 0;
-//
-//        return ((1-healthRatio) * 0.6 + myHealthRatio * 0.4) * distanceFactor + lowHpBonus;
-//    }
-
-    
 
     public static String selectWeaponAction(Inventory inventory, Player player, Player enemy) {
     	
@@ -108,20 +82,21 @@ public class Combat{
         	}
         }
         
-        if (gunCD > 0 && throwCD > 0 && meleeCD > 0 && inAttackRange(player, enemy, inventory)) return "dodge";
+        if (gunCD > 0 && throwCD > 0 && meleeCD > 0 && specialCD > 0 && inAttackRange(player, enemy, inventory)) return "dodge";
         
-        if (inventory.getGun() != null && gunCD == 0 && inAttackRange(player, enemy, inventory)) {
+        else if (inventory.getGun() != null && gunCD == 0 && inAttackRange(player, enemy, inventory)) {
         	gunCD = inventory.getGun().getCooldown();
         	System.out.print("Shoot, cool down: " + gunCD);
         	return "shoot";
         }
         
-        if (inventory.getThrowable() != null && throwCD == 0 && inThrowRange(player, enemy, inventory)) {
+        else if (inventory.getThrowable() != null && throwCD == 0 && inThrowRange(player, enemy, inventory)) {
         	throwCD = inventory.getThrowable().getCooldown();
             return "throw";
         }
 
-        if (inventory.getSpecial() != null) {
+        else if (inventory.getSpecial() != null && specialCD == 0 && inSpecialRange(player, enemy, inventory)) {
+        	specialCD = inventory.getSpecial().getCooldown();
             return "special";
         }
         
@@ -136,47 +111,30 @@ public class Combat{
     	gunCD = Math.max(0, gunCD-1);
     	throwCD = Math.max(0, throwCD-1);
     	meleeCD = Math.max(0, meleeCD-1);
-    	System.out.println("CoolDown : Gun-"+gunCD+" Throw-"+throwCD+" " );
+    	specialCD = Math.max(0, specialCD-1);
+    	System.out.println("CoolDown : Gun-"+gunCD+" Throw-"+throwCD+" SpecialCD-"+specialCD+" MeleeCD-"+meleeCD+" " );
     }
     
     public static void resetCD() {
+    	specialCD=0;
     	gunCD=0;
     	throwCD=0;
     	meleeCD=0;
-    	System.out.println("CoolDown : Gun-"+gunCD+" Throw-"+throwCD+" " );
+    	System.out.println("CoolDown : Gun-"+gunCD+" Throw-"+throwCD+" SpecialCD-"+specialCD+" MeleeCD-"+meleeCD+" " );
     }
     
     public static String selectWeaponAction(Inventory inventory) {
 
-        if (inventory.getGun() != null) {
+        
+        if (inventory.getGun() != null && gunCD == 0) {
+        	gunCD = inventory.getGun().getCooldown();
+        	System.out.print("Shoot chest, cool down: " + gunCD);
         	return "shoot";
         }
-        
-        if (inventory.getThrowable() != null) {
-            return "throw";
-        }
 
-        if (inventory.getSpecial() != null) {
-            return "special";
-        }
-        
+        meleeCD = inventory.getMelee().getCooldown();
         return "attack";
     }
-    
-//    public static boolean shouldRetreat(Player currentPlayer, GameMap gameMap) {
-//
-//        if (currentPlayer.getHealth() <= Config.HP_RETREAT_THRESHOLD) {
-//            return true;
-//        }
-//
-//        long nearbyEnemies = gameMap.getOtherPlayerInfo().stream()
-//            .filter(p -> p.getHealth() > 0)
-//            .filter(p -> PathUtils.distance(currentPlayer, p) <= 3)
-//            .count();
-//        
-//        return nearbyEnemies >= 2;
-//    }
-    
     
     public static boolean inAttackRange(Node attacker, Node target, Inventory inventory) {
     	
@@ -247,6 +205,32 @@ public class Combat{
             default -> false;
         };
     }
+    
+    public static boolean inSpecialRange(Node attacker, Node target, Inventory inventory) {
+    	
+    	int width,length;
+
+        int dx = target.getX() - attacker.getX();
+        int dy = target.getY() - attacker.getY();
+
+        
+        String direction = Navigator.getAttackDirection(attacker, target);
+        
+
+        int[] attackRange =  inventory.getSpecial().getRange();
+        width = attackRange[0];
+        length = attackRange[1];
+        
+        
+        return switch (direction) {
+            case "u" -> dy > 0 && dy <= length && Math.abs(dx) <= width/2;
+            case "d" -> dy < 0 && -dy <= length && Math.abs(dx) <= width/2;
+            case "l" -> dx < 0 && -dx <= length && Math.abs(dy) <= width/2;
+            case "r" -> dx > 0 && dx <= length && Math.abs(dy) <= width/2;
+            default -> false;
+        };
+    }
+    
     
     public static boolean hasWeapon(Inventory inventory) {
         return inventory.getGun() != null ;

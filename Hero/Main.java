@@ -1,4 +1,4 @@
-package Hero;
+package lastSrc;
 
 import io.socket.emitter.Emitter;
 import jsclub.codefest.sdk.Hero;
@@ -17,9 +17,9 @@ import java.util.List;
 
 public class Main {
     private static final String SERVER_URL = "https://cf25-server.jsclub.dev";
-    private static final String GAME_ID = "181065";
+    private static final String GAME_ID = "167353";
     private static final String PLAYER_NAME = "b1e";
-    private static final String SECRET_KEY = "sk-6FV6QQglQcSySWg00CoBFA:Y3EOpPmZiUjiiCwxLlCk683mNtj9oEac-djj__XNqK4Jyp2gLD-eGyXtq0jq-Gf6BO_8XA3t3ArEFVzGxZHAEQ";
+    private static final String SECRET_KEY = "sk-TN9xLbiuTbyZXILhvyWJbw:skQHC0vsqGEWmjjNlB_mLLiRl1z-BUJf_OjRgcRWtGoWpxTBp9hvQ-0qqmD3BZCppSfa8wHyysKVkG5j06qwzQ";
 
     public static void main(String[] args) throws IOException {
         Hero hero = new Hero(GAME_ID, PLAYER_NAME, SECRET_KEY);
@@ -102,6 +102,12 @@ class MapUpdateListener implements Emitter.Listener {
             }
         }
 
+        if (Combat.hasWeapon(inventory)) {
+            System.out.println("Found weapon in inventory, switching to COMBAT");
+            state = "COMBAT";
+            return;
+        }
+        
         if (!state.equals(previousState)) {
             System.out.println("State changed from " + previousState + " to " + state);
         } else {
@@ -135,12 +141,6 @@ class MapUpdateListener implements Emitter.Listener {
     }
     private void searchWeapon(GameMap gameMap, Player player, Inventory inventory) throws IOException {
         System.out.println("Searching for weapon...");
-
-        if (Combat.hasWeapon(inventory)) {
-            System.out.println("Found weapon in inventory, switching to COMBAT");
-            state = "COMBAT";
-            return;
-        }
 
         Weapon weapon = Resource.findWeapon(gameMap, player, inventory);
         

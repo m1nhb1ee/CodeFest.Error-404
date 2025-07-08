@@ -1,4 +1,4 @@
-package Hero;
+package lastSrc;
 
 
 import jsclub.codefest.sdk.model.GameMap;
@@ -123,7 +123,7 @@ public class Resource {
 	        for (Weapon gun : gameMap.getAllGun()) {
 	            double distance = PathUtils.distance(currentPlayer, gun);
 	            double dps = gun.getDamage() / gun.getCooldown();
-	            if (PathUtils.checkInsideSafeArea(gun, gameMap.getSafeZone(), gameMap.getMapSize()))
+	            if (PathUtils.checkInsideSafeArea(gun, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, gun, null))
 	            	candidates.add(new BestWeaponItem(gun, Config.GUN_PRIORITY, distance, dps));
 	        }
     	}
@@ -132,7 +132,7 @@ public class Resource {
 	        for (Weapon throwable : gameMap.getAllThrowable()) {
 	            double distance = PathUtils.distance(currentPlayer, throwable);
 	            double dps = throwable.getDamage() / throwable.getCooldown();
-	            if (PathUtils.checkInsideSafeArea(throwable, gameMap.getSafeZone(), gameMap.getMapSize()))
+	            if (PathUtils.checkInsideSafeArea(throwable, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, throwable, null))
 	            	candidates.add(new BestWeaponItem(throwable, Config.THROWABLE_PRIORITY, distance, dps));
 	        }
         }
@@ -141,7 +141,7 @@ public class Resource {
 	        for (Weapon melee : gameMap.getAllMelee()) {
 	            double distance = PathUtils.distance(currentPlayer, melee);
 	            double dps = melee.getDamage() / melee.getCooldown();
-	            if (PathUtils.checkInsideSafeArea(melee, gameMap.getSafeZone(), gameMap.getMapSize()))
+	            if (PathUtils.checkInsideSafeArea(melee, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, melee, null))
 	            	candidates.add(new BestWeaponItem(melee, Config.THROWABLE_PRIORITY, distance, dps));
 	        }
         }

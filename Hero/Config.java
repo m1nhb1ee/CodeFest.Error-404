@@ -1,4 +1,4 @@
-package Hero;
+package lastSrc;
 
 public class Config{
 

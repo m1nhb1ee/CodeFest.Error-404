@@ -1,4 +1,4 @@
-package Hero;
+package lastSrc;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ public class Navigator {
     	else return false;
     }
     
-public static boolean checkObstacles(GameMap gameMap, Player player, String direct) {
+public static boolean checkObstacles(GameMap gameMap, Node player, String direct) {
     	
     	List<Node> nodes = new ArrayList<>(gameMap.getListObstacles());
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_GO_THROUGH"));
@@ -49,7 +49,6 @@ public static boolean checkObstacles(GameMap gameMap, Player player, String dire
         else if (direct == "d") y=y-1;
         else if (direct == "l") x=x-1;
         else if (direct == "r") x=x+1;
-        else System.out.println("What the fvck direction");
         
     	for (Node node : nodes) {
             if (node.getX() == x && node.getY() == y) return true;
@@ -137,9 +136,25 @@ public static boolean checkObstacles(GameMap gameMap, Player player, String dire
         return chestDistance <= 5;
         
     }
+    
+    public static String fixedPath(String path, List<String> lastPath) {
+    	
+    	if (path.equals(lastPath.get(1))) return path.substring(1);
+    	
+        else if (path.equals(lastPath.get(0))) return lastPath.get(1);
+        
+        else return path;
+    	
+    }
+    
         
     public static boolean keepLooting(GameMap gameMap, Player player, Inventory inventory) {
-    	double distance = Combat.findBestTarget(gameMap, player, inventory).distance;
-        return distance > 1 ;
-        }   
+    	
+    	Combat.CombatTarget enemy = Combat.findBestTarget(gameMap, player, inventory);
+    	if (enemy == null) return true;
+    	
+    	double distance = enemy.distance;
+        return distance > 2 ;
+        
+    }   
 }
