@@ -1,4 +1,4 @@
-package lastSrc;
+package Hero;
 
 import jsclub.codefest.sdk.model.GameMap;
 import jsclub.codefest.sdk.model.Inventory;
@@ -15,15 +15,11 @@ public class Combat{
     public static class CombatTarget {
         public final Player target;
         public final double distance;
-//        public final double threat;
-//        public final double opportunity;
-
         
-        public CombatTarget(Player target, double distance /*double threat, double opportunity */) {
+        public CombatTarget(Player target, double distance) {
             this.target = target;
             this.distance = distance;
-//            this.threat = threat;
-//            this.opportunity = opportunity;
+
 
         }
         
@@ -45,26 +41,20 @@ public class Combat{
             double distance = PathUtils.distance(currentPlayer, enemy);
             if (distance > Config.MAX_CHASE_DISTANCE) continue;
            
-            
-//            double threat = calculateThreat(enemy, distance);
-//            double opportunity = calculateOpportunity(enemy, distance, currentPlayer);
-            
-            targets.add(new CombatTarget(enemy, distance/*threat, opportunity*/));
+            targets.add(new CombatTarget(enemy, distance));
         }
         
 
         return targets.stream()
-                /*.filter(t -> t.getScore() > 0.5)*/
                 .max(Comparator.comparingDouble(CombatTarget::getScore))
                 .orElse(null);
     }
 
     public static String selectWeaponAction(Inventory inventory, Player player, Player enemy) {
     	
-    	double gunD = 0, meleeD = 0, throwableD = 0;
+    	double meleeD = 0, throwableD = 0;
     	double distance = PathUtils.distance(player, enemy);
     	
-        if (inventory.getGun() != null) gunD = inventory.getGun().getDamage();
         if (inventory.getThrowable() != null) throwableD = inventory.getThrowable().getDamage();
         if (inventory.getMelee() != null) meleeD = inventory.getMelee().getDamage();
 
@@ -83,21 +73,24 @@ public class Combat{
         }
         
         if (gunCD > 0 && throwCD > 0 && meleeCD > 0 && specialCD > 0 && inAttackRange(player, enemy, inventory)) return "dodge";
-        
-        else if (inventory.getGun() != null && gunCD == 0 && inAttackRange(player, enemy, inventory)) {
-        	gunCD = inventory.getGun().getCooldown();
-        	System.out.print("Shoot, cool down: " + gunCD);
-        	return "shoot";
+         
+        else if (inventory.getGun() != null && gunCD == 0) {
+        	if (inShootRange(player, enemy, inventory)) {
+	        	gunCD = inventory.getGun().getCooldown();
+	        	return "shoot";
+        	}
         }
-        
-        else if (inventory.getThrowable() != null && throwCD == 0 && inThrowRange(player, enemy, inventory)) {
-        	throwCD = inventory.getThrowable().getCooldown();
-            return "throw";
+        else if (inventory.getThrowable() != null && throwCD == 0) {
+        	if (inThrowRange(player, enemy, inventory)) {
+	        	throwCD = inventory.getThrowable().getCooldown();
+	            return "throw";
+        	}
         }
-
-        else if (inventory.getSpecial() != null && specialCD == 0 && inSpecialRange(player, enemy, inventory)) {
-        	specialCD = inventory.getSpecial().getCooldown();
-            return "special";
+        else if (inventory.getSpecial() != null && specialCD == 0) {
+        	if (inSpecialRange(player, enemy, inventory)) {
+	        	specialCD = inventory.getSpecial().getCooldown();
+	            return "special";
+        	}
         }
         
 
@@ -135,40 +128,63 @@ public class Combat{
         meleeCD = inventory.getMelee().getCooldown();
         return "attack";
     }
-    
     public static boolean inAttackRange(Node attacker, Node target, Inventory inventory) {
     	
     	int width,length;
+    	int[] shootRange, throwRange, specialRange, attackRange;
+    	
+    	shootRange = new int[2];
+    	throwRange = new int[2];
+    	specialRange = new int[2];
+    	
+        int dx = target.getX() - attacker.getX();
+        int dy = target.getY() - attacker.getY();
+
+        String direction = Navigator.getAttackDirection(attacker, target);
+        
+        if (inventory.getGun() != null) shootRange =  inventory.getGun().getRange();
+
+        if (inventory.getThrowable() != null) throwRange =  inventory.getThrowable().getRange();
+
+        if (inventory.getSpecial() != null) specialRange =  inventory.getSpecial().getRange();
+        
+        attackRange =  inventory.getMelee().getRange();
+        
+        int[][] ranges = {shootRange, throwRange, specialRange};
+        int[] bestRange = attackRange;
+
+        for (int[] range : ranges) {
+            if (range[1] > bestRange[1]) {
+                bestRange = range;
+            }
+        }
+
+        width = bestRange[0];
+        length = bestRange[1];
+        
+        return switch (direction) {
+            case "u" -> dy > 0 && dy <= length && Math.abs(dx) <= width / 2;
+            case "d" -> dy < 0 && -dy <= length && Math.abs(dx) <= width / 2;
+            case "l" -> dx < 0 && -dx <= length && Math.abs(dy) <= width / 2;
+            case "r" -> dx > 0 && dx <= length && Math.abs(dy) <= width / 2;
+            default -> false;
+        };
+    }
+    
+    public static boolean inShootRange(Node attacker, Node target, Inventory inventory) {
+    	
+    	int width,length;
+    	int[] shootRange;
 
         int dx = target.getX() - attacker.getX();
         int dy = target.getY() - attacker.getY();
 
         String direction = Navigator.getAttackDirection(attacker, target);
         
-        if (inventory.getGun() != null) {
-        	int[] attackRange =  inventory.getGun().getRange();
-            width = attackRange[0];
-            length = attackRange[1];
-        }
+        shootRange =  inventory.getGun().getRange();
+        width = shootRange[0];
+        length = shootRange[1];
 
-        else if (inventory.getThrowable() != null) {
-        	int[] attackRange =  inventory.getThrowable().getRange();
-            width = attackRange[0];
-            length = attackRange[1];
-        }
-
-        else if (inventory.getSpecial() != null) {
-        	int[] attackRange =  inventory.getSpecial().getRange();
-            width = attackRange[0];
-            length = attackRange[1];
-        }
-        
-        else {
-        	int[] attackRange =  inventory.getMelee().getRange();
-            width = attackRange[0];
-            length = attackRange[1];
-        }
-        
         return switch (direction) {
             case "u" -> dy > 0 && dy <= length && Math.abs(dx) <= width / 2;
             case "d" -> dy < 0 && -dy <= length && Math.abs(dx) <= width / 2;
@@ -186,11 +202,9 @@ public class Combat{
         int dy = target.getY() - attacker.getY();
         int range;
         
-        if (inventory.getThrowable().getId()=="SMOKE") range = 3;
-        else range = 1;
+        range = inventory.getThrowable().getExplodeRange();
         
         String direction = Navigator.getAttackDirection(attacker, target);
-        
 
         int[] attackRange =  inventory.getThrowable().getRange();
         width = attackRange[0];

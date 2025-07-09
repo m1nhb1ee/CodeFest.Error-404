@@ -1,4 +1,4 @@
-package lastSrc;
+package Hero;
 
 
 import jsclub.codefest.sdk.model.GameMap;
@@ -123,7 +123,7 @@ public class Resource {
 	        for (Weapon gun : gameMap.getAllGun()) {
 	            double distance = PathUtils.distance(currentPlayer, gun);
 	            double dps = gun.getDamage() / gun.getCooldown();
-	            if (PathUtils.checkInsideSafeArea(gun, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, gun, null))
+	            if (PathUtils.checkInsideSafeArea(gun, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, gun.getX(), gun.getY()))
 	            	candidates.add(new BestWeaponItem(gun, Config.GUN_PRIORITY, distance, dps));
 	        }
     	}
@@ -132,7 +132,7 @@ public class Resource {
 	        for (Weapon throwable : gameMap.getAllThrowable()) {
 	            double distance = PathUtils.distance(currentPlayer, throwable);
 	            double dps = throwable.getDamage() / throwable.getCooldown();
-	            if (PathUtils.checkInsideSafeArea(throwable, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, throwable, null))
+	            if (PathUtils.checkInsideSafeArea(throwable, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, throwable.getX(), throwable.getY()))
 	            	candidates.add(new BestWeaponItem(throwable, Config.THROWABLE_PRIORITY, distance, dps));
 	        }
         }
@@ -141,7 +141,7 @@ public class Resource {
 	        for (Weapon melee : gameMap.getAllMelee()) {
 	            double distance = PathUtils.distance(currentPlayer, melee);
 	            double dps = melee.getDamage() / melee.getCooldown();
-	            if (PathUtils.checkInsideSafeArea(melee, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, melee, null))
+	            if (PathUtils.checkInsideSafeArea(melee, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, melee.getX(), melee.getY()))
 	            	candidates.add(new BestWeaponItem(melee, Config.THROWABLE_PRIORITY, distance, dps));
 	        }
         }
@@ -165,7 +165,7 @@ public class Resource {
             if (inventory.getGun() == null) {
                 for (Weapon gun : gameMap.getAllGun()) {
                     double distance = PathUtils.distance(currentPlayer, gun);
-                    if (distance <= 2) {
+                    if (distance <= 1) {
                     	System.out.println("detect gun");
                         if (distance == 0) {
                             hero.pickupItem();
@@ -175,7 +175,8 @@ public class Resource {
                         } else {
                         	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, gun, true);
                         	System.out.println("Path to gun: " + path);
-                        	if (path != null && Navigator.checkObstacles(gameMap, currentPlayer, path)) {
+                        	if (path != null && Navigator.checkObstacles(gameMap, gun.getX(), gun.getY())) {
+                        		System.out.println("Something block the item");
                         		return false;
                         	}
                             if (path != null && !path.isEmpty()) {
@@ -190,8 +191,9 @@ public class Resource {
                 }
             }
             if (inventory.getHelmet() == null) {
+            	System.out.println("Helmet: empty");
                 for (Armor helmet : gameMap.getListArmors()) {
-                	if ("MAGIC_HELMET".equals(helmet.getId()) || "WOODEN_HELMET".equals(helmet.getId())  ) {
+                	if ("MAGIC_HELMET".equals(helmet.getId()) || "WOODEN_HELMET".equals(helmet.getId()) ) {
 	                    double distance = PathUtils.distance(currentPlayer, helmet);
 	                    if (distance <= 5.0) { 
 	                    	System.out.println("detect helmet");
@@ -204,7 +206,8 @@ public class Resource {
 	                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, helmet, true);
 	                        	System.out.println("Path to helmet: " + path);
 	                            
-	                        	if (path != null && Navigator.checkObstacles(gameMap, currentPlayer, path)) {
+	                        	if (path != null && Navigator.checkObstacles(gameMap, helmet.getX(), helmet.getY())) {
+	                        		System.out.println("Something block the item");
 	                        		return false;
 	                        	}
 	                        	
@@ -221,6 +224,7 @@ public class Resource {
                 }
             }
             if (inventory.getArmor() == null) {
+            	System.out.println("Armor: empty");
                 for (Armor armor : gameMap.getListArmors()) {
                 	if ("MAGIC_ARMOR".equals(armor.getId()) || "ARMOR".equals(armor.getId())  ) {
 	                    double distance = PathUtils.distance(currentPlayer, armor);
@@ -234,7 +238,8 @@ public class Resource {
 	                        } else {
 	                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, armor, true);
 	                        	System.out.println("Path to armor: " + path);	
-	                        	if (path != null && Navigator.checkObstacles(gameMap, currentPlayer, path)) {
+	                        	if (path != null && Navigator.checkObstacles(gameMap, armor.getX(), armor.getY())) {
+	                        		System.out.println("Something block the item");
 	                        		return false;
 	                        	}
 	                            if (path != null && !path.isEmpty()) {
@@ -262,7 +267,8 @@ public class Resource {
                         } else {
                         	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, healing, true);
                         	System.out.println("Path to healing: " + path);
-                        	if (path != null && Navigator.checkObstacles(gameMap, currentPlayer, path)) {
+                        	if (path != null && Navigator.checkObstacles(gameMap, healing.getX(), healing.getY())) {
+                        		System.out.println("Something block the item");
                         		return false;
                         	}
                             if (path != null && !path.isEmpty()) {
@@ -294,7 +300,8 @@ public class Resource {
                         } else {
                         	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, melee, true);
                         	System.out.println("Path to melee: " + path);
-                        	if (path != null && Navigator.checkObstacles(gameMap, currentPlayer, path)) {
+                        	if (path != null && Navigator.checkObstacles(gameMap, melee.getX(), melee.getY())) {
+                        		System.out.println("Something block the item");
                         		return false;
                         	}
                             if (path != null && !path.isEmpty()) {
@@ -311,7 +318,7 @@ public class Resource {
             if (inventory.getThrowable() == null) {
                 for (Weapon throwable : gameMap.getAllThrowable()) {
                     double distance = PathUtils.distance(currentPlayer, throwable);
-                    if (distance <= 5) {
+                    if (distance <= 5 && !"SMOKE".equals(throwable.getId())) {
                     	System.out.println("detect throwable");
                         if (distance == 0) {
                             hero.pickupItem();
@@ -321,7 +328,8 @@ public class Resource {
                         } else {
                         	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, throwable, true);
                         	System.out.println("Path to throwable: " + path);
-                        	if (path != null && Navigator.checkObstacles(gameMap, currentPlayer, path)) {
+                        	if (path != null && Navigator.checkObstacles(gameMap, throwable.getX(), throwable.getY())) {
+                        		System.out.println("Something block the item");
                         		return false;
                         	}
                             if (path != null && !path.isEmpty()) {
@@ -348,7 +356,8 @@ public class Resource {
                         } else {
                         	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, special, true);
                             System.out.println("Path to special: " + path);
-                            if (path != null && Navigator.checkObstacles(gameMap, currentPlayer, path)) {
+                            if (path != null && Navigator.checkObstacles(gameMap, special.getX(), special.getY())) {
+                            	System.out.println("Something block the item");
                         		return false;
                         	}
                             if (path != null && !path.isEmpty()) {

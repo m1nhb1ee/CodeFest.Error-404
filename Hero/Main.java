@@ -1,4 +1,4 @@
-package lastSrc;
+package Hero;
 
 import io.socket.emitter.Emitter;
 import jsclub.codefest.sdk.Hero;
@@ -17,9 +17,9 @@ import java.util.List;
 
 public class Main {
     private static final String SERVER_URL = "https://cf25-server.jsclub.dev";
-    private static final String GAME_ID = "167353";
+    private static final String GAME_ID = "118558";
     private static final String PLAYER_NAME = "b1e";
-    private static final String SECRET_KEY = "sk-TN9xLbiuTbyZXILhvyWJbw:skQHC0vsqGEWmjjNlB_mLLiRl1z-BUJf_OjRgcRWtGoWpxTBp9hvQ-0qqmD3BZCppSfa8wHyysKVkG5j06qwzQ";
+    private static final String SECRET_KEY = "sk-6FV6QQglQcSySWg00CoBFA:Y3EOpPmZiUjiiCwxLlCk683mNtj9oEac-djj__XNqK4Jyp2gLD-eGyXtq0jq-Gf6BO_8XA3t3ArEFVzGxZHAEQ";
 
     public static void main(String[] args) throws IOException {
         Hero hero = new Hero(GAME_ID, PLAYER_NAME, SECRET_KEY);
@@ -46,7 +46,7 @@ class MapUpdateListener implements Emitter.Listener {
             gameMap.updateOnUpdateMap(args[0]);
             Player player = gameMap.getCurrentPlayer();
             Inventory inventory = hero.getInventory();
-            
+
             updateState(gameMap, player, inventory);
             
             System.out.println("=== Current state: " + state + " ===");
@@ -55,7 +55,7 @@ class MapUpdateListener implements Emitter.Listener {
 
             
             System.out.println("HP: " + player.getHealth() + " | State: " + state);
-
+                  
             switch (state) {
                 case "WEAPON_SEARCH" -> searchWeapon(gameMap, player, inventory);
                 case "COMBAT" -> searchCombat(gameMap, player, inventory);
@@ -78,19 +78,14 @@ class MapUpdateListener implements Emitter.Listener {
         Node chest = Resource.findChest(gameMap, player);
         SupportItem spItem = Resource.findHealing(gameMap, player);
         
+        
+        
+        /////////////////////////////////// HP ////////////////////////////////
         if (player.getHealth() <= 0) {
             state = "WEAPON_SEARCH";
             System.out.println("Hero died, switching to WEAPON_SEARCH");
             return;
         }
-        if (chest != null || spItem != null) {
-	        if (player.getHealth() < Config.HP_DANGER_THRESHOLD) {
-	            state = "HEALING";
-	            System.out.println("HP critical (" + player.getHealth() + "), switching to HEALING");
-	            return;
-	        }
-        }
-
         if (player.getHealth() <= Config.HP_MEDIUM_THRESHOLD && !inventory.getListSupportItem().isEmpty()) {
             try {
                 SupportItem healing = inventory.getListSupportItem().get(0);
@@ -101,13 +96,29 @@ class MapUpdateListener implements Emitter.Listener {
                 System.err.println("Error using healing item: " + e.getMessage());
             }
         }
+        if (chest != null || spItem != null) {
+	        if (player.getHealth() < Config.HP_DANGER_THRESHOLD) {
+	            state = "HEALING";
+	            System.out.println("HP critical (" + player.getHealth() + "), switching to HEALING");
+	            return;
+	        }
+        }
+        if (state == "HEALING") {
+        	if (player.getHealth() > Config.HP_MEDIUM_THRESHOLD) {
+                System.out.println("Health recovered, switching to COMBAT");
+                state = "COMBAT";
+                return;
+            }
+        }
+        /////////////////////////////////// HP ////////////////////////////////
 
-        if (Combat.hasWeapon(inventory)) {
+        if (state == "WEAPON_SEARCH" && Combat.hasWeapon(inventory)){
             System.out.println("Found weapon in inventory, switching to COMBAT");
             state = "COMBAT";
             return;
         }
-        
+
+
         if (!state.equals(previousState)) {
             System.out.println("State changed from " + previousState + " to " + state);
         } else {
@@ -115,7 +126,10 @@ class MapUpdateListener implements Emitter.Listener {
         }
     }
     private boolean handleLooting(GameMap gameMap, Player player, Inventory inventory) throws IOException {
-        if (!Navigator.keepLooting(gameMap, player, inventory)) return false;
+
+        
+        if (Resource.gatherResources(gameMap, player, inventory, hero)) return true;
+        
         
         Node chest = Resource.findChest(gameMap, player);
         if (chest != null) {
@@ -132,18 +146,13 @@ class MapUpdateListener implements Emitter.Listener {
             }
         }
         
-        if (Resource.gatherResources(gameMap, player, inventory, hero)) {
-            state = "COMBAT";
-            return true;
-        }
-        
         return false;
     }
     private void searchWeapon(GameMap gameMap, Player player, Inventory inventory) throws IOException {
         System.out.println("Searching for weapon...");
 
         Weapon weapon = Resource.findWeapon(gameMap, player, inventory);
-        
+
         if (weapon == null) {
             System.out.println("No weapon found on map, searching chest");
             searchChest(gameMap, player, inventory);
@@ -205,23 +214,10 @@ class MapUpdateListener implements Emitter.Listener {
         String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, enemy.target, true);
         
         if (path != null && !path.isEmpty()) {
-        	if (path.equals(lastPath.get(1))) {
-        		lastPath.remove(0);
-        		lastPath.add(new StringBuilder(path).reverse().toString());
-        		path = lastPath.get(1);
-        	}
-            else if (lastPath.contains(path)) {
-            	path = lastPath.get(1);
-            	lastPath.remove(0);
-        		lastPath.add(path);
-            }
-            else {
-            	lastPath.remove(0);
-        		lastPath.add(path);
-                path = lastPath.get(1);
-            }
-            
+            path = Navigator.fixedPath(path, lastPath);
             hero.move(path);
+            lastPath.remove(0);
+            lastPath.add(path);
             Combat.updateCD();
             System.out.println("Moving to enemy: " + path);
         } else {
@@ -263,27 +259,6 @@ class MapUpdateListener implements Emitter.Listener {
 
     private void searchHealing(GameMap gameMap, Player player, Inventory inventory) throws IOException {
         System.out.println("Searching for healing...");
-        
-
-        if (player.getHealth() > Config.HP_MEDIUM_THRESHOLD) {
-            System.out.println("Health recovered, switching to COMBAT");
-            state = "COMBAT";
-            return;
-        }
-        
-
-        if (!inventory.getListSupportItem().isEmpty()) { 
-            SupportItem healingItem = inventory.getListSupportItem().get(0);
-            System.out.println("HP low, using healing item: " + healingItem.getId());
-            try {
-                hero.useItem(healingItem.getId());
-                Combat.updateCD();
-                return;
-            } catch (IOException e) {
-                System.err.println("Error using healing item: " + e.getMessage());
-            }
-        }
-        
 
         SupportItem healing = Resource.findHealing(gameMap, player);
         System.out.println("Healing item found on map: " + healing);
@@ -326,7 +301,10 @@ class MapUpdateListener implements Emitter.Listener {
 
         String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), player, chest, true);
         if (path != null && !path.isEmpty() && distance > 1) {
+            path = Navigator.fixedPath(path, lastPath);
             hero.move(path);
+            lastPath.remove(0);
+            lastPath.add(path);
             Combat.updateCD();
             System.out.println("Moving to chest: " + path);
         } else if (path != null && !path.isEmpty()) {
@@ -479,22 +457,10 @@ class MapUpdateListener implements Emitter.Listener {
             Combat.resetCD();
             System.out.println("Picked up " + targetType + ": " + target);
         } else {
-
-            if (path.equals(lastPath.get(1))) {
-            	lastPath.remove(0);
-            	lastPath.add(new StringBuilder(path).reverse().toString());
-            	path = lastPath.get(1);
-            } else if (lastPath.contains(path)) {
-                path = lastPath.get(1);
-                lastPath.remove(0);
-            	lastPath.add(path);
-            } else {
-                lastPath.remove(0);
-                lastPath.add(path);
-                path = lastPath.get(1);
-            }
-            
+            path = Navigator.fixedPath(path, lastPath);
             hero.move(path);
+            lastPath.remove(0);
+            lastPath.add(path);
             Combat.updateCD();
             System.out.println("Moving to " + targetType + ": " + path);
         }

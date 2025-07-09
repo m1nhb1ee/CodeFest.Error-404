@@ -1,4 +1,4 @@
-package lastSrc;
+package Hero;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,20 +35,11 @@ public class Navigator {
     	else return false;
     }
     
-public static boolean checkObstacles(GameMap gameMap, Node player, String direct) {
+public static boolean checkObstacles(GameMap gameMap, int x, int y) {
     	
     	List<Node> nodes = new ArrayList<>(gameMap.getListObstacles());
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_GO_THROUGH"));
         nodes.addAll(gameMap.getOtherPlayerInfo());
-        
-        int x,y;
-        x = player.getX();
-        y = player.getY();
-        
-        if (direct == "u") y=y+1;
-        else if (direct == "d") y=y-1;
-        else if (direct == "l") x=x-1;
-        else if (direct == "r") x=x+1;
         
     	for (Node node : nodes) {
             if (node.getX() == x && node.getY() == y) return true;
@@ -132,8 +123,8 @@ public static boolean checkObstacles(GameMap gameMap, Node player, String direct
         if ("HAND".equals(inventory.getMelee().getId()) && inventory.getGun() != null) {
             return chestDistance <= 7;
         }
-        
-        return chestDistance <= 5;
+        else if (inventory.getGun() == null) return chestDistance <= 3;
+        else return chestDistance <= 5;
         
     }
     
@@ -147,14 +138,14 @@ public static boolean checkObstacles(GameMap gameMap, Node player, String direct
     	
     }
     
-        
-    public static boolean keepLooting(GameMap gameMap, Player player, Inventory inventory) {
-    	
-    	Combat.CombatTarget enemy = Combat.findBestTarget(gameMap, player, inventory);
-    	if (enemy == null) return true;
-    	
-    	double distance = enemy.distance;
-        return distance > 2 ;
-        
-    }   
+        /// has bug here
+//    public static boolean keepLooting(GameMap gameMap, Player player, Inventory inventory) {
+//    	
+//    	Combat.CombatTarget enemy = Combat.findBestTarget(gameMap, player, inventory);
+//    	if (enemy == null) return true;
+//    	
+//    	double distance = enemy.distance;
+//        return distance > 1 ;
+//        
+//    }   
 }
