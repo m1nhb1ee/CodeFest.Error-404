@@ -8,6 +8,8 @@ import jsclub.codefest.sdk.model.obstacles.Obstacle;
 import jsclub.codefest.sdk.model.support_items.SupportItem;
 import jsclub.codefest.sdk.model.players.Player;
 import jsclub.codefest.sdk.model.weapon.Weapon;
+import lastSrc.Combat;
+import lastSrc.Navigator;
 import jsclub.codefest.sdk.Hero;
 import jsclub.codefest.sdk.algorithm.PathUtils;
 import jsclub.codefest.sdk.base.Node;
@@ -132,7 +134,7 @@ public class Resource {
 	        for (Weapon throwable : gameMap.getAllThrowable()) {
 	            double distance = PathUtils.distance(currentPlayer, throwable);
 	            double dps = throwable.getDamage() / throwable.getCooldown();
-	            if (PathUtils.checkInsideSafeArea(throwable, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, throwable.getX(), throwable.getY()))
+	            if (PathUtils.checkInsideSafeArea(throwable, gameMap.getSafeZone(), gameMap.getMapSize()) && !Navigator.checkObstacles(gameMap, throwable.getX(), throwable.getY()) && !"SMOKE".equals(throwable.getId()))
 	            	candidates.add(new BestWeaponItem(throwable, Config.THROWABLE_PRIORITY, distance, dps));
 	        }
         }
@@ -191,7 +193,6 @@ public class Resource {
                 }
             }
             if (inventory.getHelmet() == null) {
-            	System.out.println("Helmet: empty");
                 for (Armor helmet : gameMap.getListArmors()) {
                 	if ("MAGIC_HELMET".equals(helmet.getId()) || "WOODEN_HELMET".equals(helmet.getId()) ) {
 	                    double distance = PathUtils.distance(currentPlayer, helmet);
@@ -224,7 +225,6 @@ public class Resource {
                 }
             }
             if (inventory.getArmor() == null) {
-            	System.out.println("Armor: empty");
                 for (Armor armor : gameMap.getListArmors()) {
                 	if ("MAGIC_ARMOR".equals(armor.getId()) || "ARMOR".equals(armor.getId())  ) {
 	                    double distance = PathUtils.distance(currentPlayer, armor);
@@ -254,46 +254,56 @@ public class Resource {
                 	}
                 }
             }
-            if (inventory.getListSupportItem().size() < 4) {
+
                 for (SupportItem healing : gameMap.getListSupportItems()) {
-                    double distance = PathUtils.distance(currentPlayer, healing);
-                    if (distance <= 5) {
-                    	System.out.println("detect healing");
-                        if (distance == 0) {
-                            hero.pickupItem();
-                            Combat.resetCD();
-                            System.out.println("Picked up healing item at current position");
-                            return true;
-                        } else {
-                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, healing, true);
-                        	System.out.println("Path to healing: " + path);
-                        	if (path != null && Navigator.checkObstacles(gameMap, healing.getX(), healing.getY())) {
-                        		System.out.println("Something block the item");
-                        		return false;
-                        	}
-                            if (path != null && !path.isEmpty()) {
-                                hero.move(path);
-                                Combat.updateCD();
-                                System.out.println("Moving to healing with path: " + path);
-                                return true;
-                            } 
-                            return false;
-                        }
-                    }
+                	String uselessItem = uselessItem(inventory,healing);
+					if (!healing.getId().equals(uselessItem)) {
+	                    double distance = PathUtils.distance(currentPlayer, healing);
+	                    if (distance <= 5) {
+	                    	System.out.println("detect healing " + healing.getId());
+	                        if (distance == 0) {
+	                        	if (!"none".equals(uselessItem)) {
+	                            	hero.useItem(uselessItem);
+	                            	Combat.updateCD();
+	                            	System.out.println("Revoked support item at current position");
+	                            	return true;
+	                            }
+	                            hero.pickupItem();
+	                            Combat.resetCD();
+	                            System.out.println("Picked up healing item at current position");
+	                            return true;
+	                        } else {
+	                        	String path = PathUtils.getShortestPath(gameMap, Navigator.getObstacles(gameMap), currentPlayer, healing, true);
+	                        	System.out.println("Path to healing: " + path);
+	                        	if (path != null && Navigator.checkObstacles(gameMap, healing.getX(), healing.getY())) {
+	                        		System.out.println("Something block the item");
+	                        		return false;
+	                        	}
+	                            if (path != null && !path.isEmpty()) {
+	                                hero.move(path);
+	                                Combat.updateCD();
+	                                System.out.println("Moving to healing with path: " + path);
+	                                return true;
+	                            } 
+	                            return false;
+	                        }
+	                    }
+                	}
                 }
-            }
+            
             if ( inventory.getMelee().getDamage() <= 30 )  {
                 for (Weapon melee : gameMap.getAllMelee()) {
                     double distance = PathUtils.distance(currentPlayer, melee);
                     if (distance <= 8 && ((double)(inventory.getMelee().getDamage() / inventory.getMelee().getCooldown())) < ((double)(melee.getDamage() / melee.getCooldown()))) {
                     	System.out.println("detect melee " + inventory.getMelee().getDamage() + " " + melee.getDamage());
                         if (distance == 0) {
-                            hero.pickupItem();
                             if (!"HAND".equals(inventory.getMelee().getId())) {
                             	hero.revokeItem(inventory.getMelee().getId());
                             	Combat.updateCD();
                             	System.out.println("Revoked melee at current position");
+                            	return true;
                             }
+                            hero.pickupItem();
                             Combat.resetCD();
                             System.out.println("Picked up melee at current position");
                             return true;
@@ -385,8 +395,10 @@ public class Resource {
         List<SupportItem> check = new ArrayList<>(inventory.getListSupportItem());
         check.add(item);
         
+        if (check.size() < 5) return "none"; 
+        
         return check.stream()
-                .max(Comparator.comparingDouble(SupportItem::getHealingHP))
+                .min(Comparator.comparingDouble(SupportItem::getHealingHP))
                 .map(SupportItem::getId)
                 .orElse(null);
     }

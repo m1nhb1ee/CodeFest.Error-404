@@ -60,6 +60,7 @@ public class Combat{
 
         if (inventory.getThrowable() != null && throwableD >= enemy.getHealth() && inThrowRange(player, enemy, inventory) && throwCD ==  0) 
         {
+        	throwCD = inventory.getThrowable().getCooldown();
         	return "throw";
         }
         
@@ -67,33 +68,40 @@ public class Combat{
         {
         	System.out.println("Enough Dame to kill");
         	if (distance < 4) {
-        		
+        		meleeCD = inventory.getMelee().getCooldown();
         		return "attack";
         	}
         }
         
+        
         if (gunCD > 0 && throwCD > 0 && meleeCD > 0 && specialCD > 0 && inAttackRange(player, enemy, inventory)) return "dodge";
          
-        else if (inventory.getGun() != null && gunCD == 0) {
+        if (inventory.getGun() != null && gunCD == 0) {
+        	if (inventory.getGun().getId().equals("SHOTGUN") && !inventory.getMelee().getId().equals("HAND") && meleeCD == 0) {
+        		meleeCD = inventory.getMelee().getCooldown();
+	        	return "attack";
+        	}
+        	
         	if (inShootRange(player, enemy, inventory)) {
 	        	gunCD = inventory.getGun().getCooldown();
 	        	return "shoot";
         	}
         }
-        else if (inventory.getThrowable() != null && throwCD == 0) {
+        if (inventory.getThrowable() != null && throwCD == 0) {
+        	System.out.println("Throw ready");
         	if (inThrowRange(player, enemy, inventory)) {
 	        	throwCD = inventory.getThrowable().getCooldown();
 	            return "throw";
         	}
+        	System.out.println("Out of throw range");
         }
-        else if (inventory.getSpecial() != null && specialCD == 0) {
+        if (inventory.getSpecial() != null && specialCD == 0) {
         	if (inSpecialRange(player, enemy, inventory)) {
 	        	specialCD = inventory.getSpecial().getCooldown();
 	            return "special";
         	}
         }
         
-
         System.out.println("none wp is ready");
         meleeCD = inventory.getMelee().getCooldown();
         return "attack";

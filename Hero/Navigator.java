@@ -10,29 +10,28 @@ import jsclub.codefest.sdk.base.Node;
 import jsclub.codefest.sdk.model.GameMap;
 import jsclub.codefest.sdk.model.Inventory;
 import jsclub.codefest.sdk.model.players.Player;
+import lastSrc.Combat;
 
 public class Navigator {
-    public static boolean checkObstacles(Player myHero, Node currentPlayer, GameMap gameMap, Inventory inventory) {
+    public static boolean checkAttack(Node myHero, Node currentPlayer, GameMap gameMap, Inventory inventory) {
     	
     	List<Node> nodes = new ArrayList<>(gameMap.getListObstacles());
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_GO_THROUGH"));
         nodes.removeAll(gameMap.getObstaclesByTag("CAN_SHOOT_THROUGH"));
         
-        
-    	if (Combat.inAttackRange(myHero, currentPlayer, inventory)) {
-    		for (Node node : nodes) {
-            	if (node.getX() == myHero.getX() && (
-            		(node.getY() < currentPlayer.getY() && node.getY() > myHero.getY()) ||
-            		(node.getY() > currentPlayer.getY() && node.getY() < myHero.getY())
-            		)) return false;
-            	else if (node.getY() == myHero.getY() && (
-                		(node.getX() < currentPlayer.getX() && node.getX() > myHero.getX()) ||
-                		(node.getX() > currentPlayer.getX() && node.getX() < myHero.getX())
-                		)) return false;
-            }
-    		return true;
-    	}
-    	else return false;
+        if (Combat.inAttackRange(myHero, currentPlayer, inventory)) {
+	    	for (Node node : nodes) {
+	            if (node.getX() == myHero.getX() && (
+	            	(node.getY() < currentPlayer.getY() && node.getY() > myHero.getY()) ||
+	            	(node.getY() > currentPlayer.getY() && node.getY() < myHero.getY())
+	            	)) return false;
+	            else if (node.getY() == myHero.getY() && (
+	                	(node.getX() < currentPlayer.getX() && node.getX() > myHero.getX()) ||
+	                	(node.getX() > currentPlayer.getX() && node.getX() < myHero.getX())
+	                	)) return false;
+	    	}
+	    	return true;
+        } else return false;
     }
     
 public static boolean checkObstacles(GameMap gameMap, int x, int y) {
@@ -123,14 +122,13 @@ public static boolean checkObstacles(GameMap gameMap, int x, int y) {
         if ("HAND".equals(inventory.getMelee().getId()) && inventory.getGun() != null) {
             return chestDistance <= 7;
         }
-        else if (inventory.getGun() == null) return chestDistance <= 3;
         else return chestDistance <= 5;
         
     }
     
     public static String fixedPath(String path, List<String> lastPath) {
     	
-    	if (path.equals(lastPath.get(1))) return path.substring(1);
+    	if (path.equals(lastPath.get(1))) return new StringBuilder(path).reverse().toString();
     	
         else if (path.equals(lastPath.get(0))) return lastPath.get(1);
         
@@ -138,6 +136,39 @@ public static boolean checkObstacles(GameMap gameMap, int x, int y) {
     	
     }
     
+    public static Node bestPosition(GameMap gameMap, Node player, Node target, Inventory inventory) {
+    	Node lastPos = target;
+    	String direction = getAttackDirection(player, target);
+    	int distance = PathUtils.distance(lastPos, player);
+    	
+    	if (direction == "r") {
+    		for (int i=1; i<=distance; i++) {
+    			Node currentPos = gameMap.getElementByIndex(target.getX()-i, target.getY());
+    			if (!checkAttack(currentPos, target, gameMap, inventory) || checkObstacles(gameMap, currentPos.getX(), currentPos.getY()) || PathUtils.distance(player, currentPos) >= PathUtils.distance(player, lastPos)) break;
+    			lastPos = currentPos;
+    		}
+    	} else if (direction == "l") {
+    		for (int i=1; i<=distance; i++) {
+    			Node currentPos = gameMap.getElementByIndex(target.getX()+i, target.getY());
+    			if (!checkAttack(currentPos, target, gameMap, inventory) || checkObstacles(gameMap, currentPos.getX(), currentPos.getY()) || PathUtils.distance(player, currentPos) >= PathUtils.distance(player, lastPos)) break;
+    			lastPos = currentPos;
+    		}
+    	} else if (direction == "u") {
+    		for (int i=1; i<=distance; i++) {
+    			Node currentPos = gameMap.getElementByIndex(target.getX(), target.getY()-i);
+    			if (!checkAttack(currentPos, target, gameMap, inventory) || checkObstacles(gameMap, currentPos.getX(), currentPos.getY()) || PathUtils.distance(player, currentPos) >= PathUtils.distance(player, lastPos)) break;
+    			lastPos = currentPos;
+    		}
+    	} else if (direction == "d") {
+    		for (int i=1; i<=distance; i++) {
+    			Node currentPos = gameMap.getElementByIndex(target.getX(), target.getY()+i);
+    			if (!checkAttack(currentPos, target, gameMap, inventory)  || PathUtils.distance(player, currentPos) >= PathUtils.distance(player, lastPos)) break;
+    			lastPos = currentPos;
+    		}
+    	}
+    	return lastPos;
+    }
+
         /// has bug here
 //    public static boolean keepLooting(GameMap gameMap, Player player, Inventory inventory) {
 //    	
